@@ -72,7 +72,9 @@
 <div class="row clearfix pull-left">
 	<div class="col-xs-12">
 		<h4 class="event-detail__title">$event.title</h4>
-		<h5 class="event-detail__time">$tstrings[("day_" + ($time.strftime("%w", $etime)))]. $time.strftime("%d", $etime). $tstrings[("month_" + ($time.strftime("%m", $etime)))] $event.begin_str - $event.end&nbsp;&nbsp;($int($event.duration/60) min)</h5>
+		<h5 class="event-detail__time">
+			<span class="event__date">$event.date</span> <time>$event.begin_str</time> - <time>$event.end</time>&nbsp;&nbsp;($int($event.duration / 60) <span class="event__duration">$tstrings["mins"])</span>
+		</h5>
 	</div>
 </div>
 <div class="row clearfix">

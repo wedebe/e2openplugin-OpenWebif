@@ -46,7 +46,9 @@
 						</div>
 					</div>
 					<div class="col-xs-12 col-md-3">
-						<span>$event.date - $event.begin&nbsp;-&nbsp;$event.end&nbsp;($event.duration min.)</span>
+						<span>
+							<span class="event__date">$event.date</span> - <time>$event.begin</time>&nbsp;-&nbsp;<time>$event.end</time> <span class="event__duration">($event.duration $tstrings["mins"])</span>
+						</span>
 					</div>
 					<div class="col-xs-12 col-md-3 align-right">
 						<a href="javascript:void(0);" class="link--skinned" onclick="addTimerEvent('$sref',$event.id,false);return false;" title="$tstrings['add_timer']"><i class="material-icons material-icons-centered">alarm_add</i></a>

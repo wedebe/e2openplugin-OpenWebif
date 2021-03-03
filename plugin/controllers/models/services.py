@@ -29,6 +29,7 @@ from time import time, localtime, strftime, mktime
 
 import NavigationInstance
 from Tools.Directories import fileExists
+from Tools.FuzzyDate import FuzzyTime
 from Components.Sources.ServiceList import ServiceList
 from Components.ParentalControl import parentalControl
 from Components.config import config
@@ -727,6 +728,7 @@ def getEvent(ref, idev, encode=True):
 	info = {}
 	for event in events:
 		info['id'] = event[0]
+		info['date'] = "%s" % (FuzzyTime(event[1], inPast = True)[0])
 		info['begin_str'] = strftime("%H:%M", (localtime(event[1])))
 		info['begin'] = event[1]
 		info['end'] = strftime("%H:%M", (localtime(event[1] + event[2])))
@@ -765,7 +767,8 @@ def getChannelEpg(ref, begintime=-1, endtime=-1, encode=True):
 				ev['picon'] = picon
 				ev['id'] = event[0]
 				if event[1]:
-					ev['date'] = "%s %s" % (tstrings[("day_" + strftime("%w", (localtime(event[1]))))], strftime(_("%d.%m.%Y"), (localtime(event[1]))))
+					# "%s" % strftime(_("%a %d. %B"), (localtime(event[1])))
+					ev['date'] = "getChannelEpg %s %s" % (tstrings[("day_" + strftime("%w", (localtime(event[1]))))], strftime(_("%d.%m.%Y"), (localtime(event[1]))))
 					ev['begin'] = strftime("%H:%M", (localtime(event[1])))
 					ev['begin_timestamp'] = event[1]
 					ev['duration'] = int(event[2] / 60)
@@ -996,7 +999,7 @@ def getSearchEpg(sstr, endtime=None, fulldesc=False, bouquetsonly=False, encode=
 				continue
 			ev = {}
 			ev['id'] = event[0]
-			ev['date'] = "%s %s" % (tstrings[("day_" + strftime("%w", (localtime(event[1]))))], strftime(_("%d.%m.%Y"), (localtime(event[1]))))
+			ev['date'] = "%s" % (FuzzyTime(event[1], inPast = True)[0])
 			ev['begin_timestamp'] = event[1]
 			ev['begin'] = strftime("%H:%M", (localtime(event[1])))
 			ev['duration_sec'] = event[2]
@@ -1042,6 +1045,8 @@ def getSearchSimilarEpg(ref, eventid, encode=False):
 		for event in events:
 			ev = {}
 			ev['id'] = event[0]
+			# can't find this in the interface to test
+			# ev['date'] = "%s" % (FuzzyTime(event[1], inPast = True)[0])
 			ev['date'] = "%s %s" % (tstrings[("day_" + strftime("%w", (localtime(event[1]))))], strftime(_("%d.%m.%Y"), (localtime(event[1]))))
 			ev['begin_timestamp'] = event[1]
 			ev['begin'] = strftime("%H:%M", (localtime(event[1])))
