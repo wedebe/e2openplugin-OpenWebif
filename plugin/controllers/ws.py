@@ -20,8 +20,19 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 ##########################################################################
 
-from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
-from autobahn.twisted.resource import WebSocketResource
+try:
+	from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
+except ImportError:
+	class WebSocketServerProtocol:
+		pass
+	class WebSocketServerFactory:
+		pass
+
+try:
+	from autobahn.twisted.resource import WebSocketResource
+except ImportError:
+	class WebSocketResource:
+		pass
 
 import voluptuous as vol
 import json
