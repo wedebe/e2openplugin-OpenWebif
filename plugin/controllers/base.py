@@ -386,9 +386,14 @@ class BaseController(resource.Resource):
 
 			from Plugins.Extensions.WebInterface.WebChilds.Toplevel import loaded_plugins
 			for plugins in loaded_plugins:
-				if plugins[0] in ["fancontrol", "iptvplayer", "serienrecorderui"]:
+				if plugins[0] in ["fancontrol", "iptvplayer"]:
 					try:
 						extras.append({'key': plugins[0], 'description': plugins[2], 'nw': '2'})
+					except KeyError:
+						pass
+				elif plugins[0] in ["serienrecorderui"]:
+					try:
+						extras.append({'key': plugins[0], 'description': plugins[2], 'nw': '1'})
 					except KeyError:
 						pass
 				elif len(plugins) > 4:
