@@ -90,7 +90,7 @@ class RootController(BaseController):
 			pass
 
 		self.putChild2("ws", webSocketServer.root)
-		webSocketServer.start(session)
+		webSocketServer.start()
 
 # TODO : test !!
 	def onPartitionChange(self, why, part):
