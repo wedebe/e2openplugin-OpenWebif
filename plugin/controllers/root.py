@@ -89,7 +89,7 @@ class RootController(BaseController):
 		except:  # nosec # noqa: E722
 			pass
 
-		self.putChild("ws", webSocketServer.root)
+		self.putChild2("ws", webSocketServer.root)
 		webSocketServer.start(session)
 
 # TODO : test !!

@@ -28,38 +28,19 @@ import json
 class OWFServerProtocol(WebSocketServerProtocol):
 
 	TYPE_RESULT = "result"
-	# TYPE_AUTH_REQUIRED = "auth_required"
-	# TYPE_AUTH_OK = "auth_ok"
-	# TYPE_AUTH = "auth"
 	TYPE_PING = "ping"
 
-	# REQUEST_BASE_SCHEMA = vol.Schema({
-	# 	vol.Required('id'): int,
-	# })
-
-	# BASE_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
-	# 	vol.Required('type'): vol.Any(
-	# 			TYPE_AUTH,
-	# 			TYPE_PING
-	# 		)
-	# }, extra=vol.ALLOW_EXTRA)
-
-	# AUTH_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
-	# 	vol.Required('type'): TYPE_AUTH,
-	# })
-
 	server = None
-
-	def __init__(self, *args, **kwargs):
-		# self._authenticated = True
-		# self._failedAuthCount = 0
-		self._requestID = 0
 
 	def onClose(self, wasClean, code, reason):
 		print("WebSocket connection closed: {0}".format(code))
 
-	def _disconnect(self, code=3401, reason=u'Authentication failed'):
-		self.sendClose(code=code, reason=reason)
+	# def _disconnect(self, code=3401, reason=u'Authentication failed'):
+	# 	self.sendClose(code=code, reason=reason)
+
+	def onConnecting(self, request):
+		print("Client connectinging: {0}".format(request.peer))
+		return None
 
 	def onConnect(self, request):
 		print("Client connecting: {0}".format(request.peer))
@@ -72,73 +53,62 @@ class OWFServerProtocol(WebSocketServerProtocol):
 		if isBinary:
 			print("Binary message received: {0} bytes".format(len(payload)))
 		else:
-			msg = json.loads(payload, 'utf8')
+			# msg = json.loads(payload, 'utf8')
+			msg = payload
 			print("> %s" % (msg))
-			self.onJSONMessage(msg)
+			self.sendMessage(msg)
+			# self.onJSONMessage(msg)
 
-	def onJSONMessage(self, msg):
-		if not msg:
-			return
-		self._requestID = msg["id"]
-		do = 'do_{}'.format(msg['type'])
-		getattr(self, do)(msg)
+	# def onJSONMessage(self, msg):
+	# 	if not msg:
+	# 		return
+	# 	print("> (JSON) %s" % (msg))
+		# self._requestID = msg["id"]
+		# do = 'do_{}'.format(msg['type'])
+		# getattr(self, do)(msg)
 
-	def sendJSON(self, msg):
-		if "id" in msg:
-			self._requestID += 1
-			msg['id'] = self._requestID
-		msg = json.dumps(msg).encode('utf8')
-		print("< %s" % (msg))
-		self.sendMessage(msg)
+	# def sendJSON(self, msg):
+	# 	if "id" in msg:
+	# 		self._requestID += 1
+	# 		msg['id'] = self._requestID
+	# 	msg = json.dumps(msg).encode('utf8')
+	# 	print("< %s" % (msg))
+	# 	self.sendMessage(msg)
 
-	def sendResult(self, id, result=None):
-		msg = {
-			"id": id,
-			"type": self.TYPE_RESULT,
-			"success": True,
-			"result": result,
-		}
-		self.sendJSON(msg)
+	# def sendResult(self, id, result=None):
+	# 	msg = {
+	# 		"id": id,
+	# 		"type": self.TYPE_RESULT,
+	# 		"success": True,
+	# 		"result": result,
+	# 	}
+	# 	self.sendJSON(msg)
 
-	def sendError(self, id, code, message=None):
-		data = {
-			"id": id,
-			"type": self.TYPE_RESULT,
-			"success": False,
-			"error": {
-				"code": code,
-				"message": message,
-			}
-		}
-		self.sendJSON(data)
+	# def sendError(self, id, code, message=None):
+	# 	data = {
+	# 		"id": id,
+	# 		"type": self.TYPE_RESULT,
+	# 		"success": False,
+	# 		"error": {
+	# 			"code": code,
+	# 			"message": message,
+	# 		}
+	# 	}
+	# 	self.sendJSON(data)
 
-	def do_ping(self, msg):
-		self.sendJSON({"type": self.TYPE_PING})
-
+	# def do_ping(self, msg):
+	# 	self.sendJSON({"type": self.TYPE_PING})
 
 class OWFWebSocketServer():
 	def __init__(self):
-		self.session = None
-		self._sessions = set()
-		self._factory = WebSocketServerFactory(url=None)
-		self._factory.setProtocolOptions(autoPingInterval=15, autoPingTimeout=3)
-		self._factory.protocol = OWFServerProtocol
-		self.root = WebSocketResource(self._factory)
+		self.factory = WebSocketServerFactory(url=None)
+		self.factory.setProtocolOptions(autoPingInterval=15, autoPingTimeout=3)
+		self.factory.protocol = OWFServerProtocol #(self.topics)
+		self.root = WebSocketResource(self.factory)
 		OWFServerProtocol.server = None
 
-	def addSession(self, session):
-		self._sessions.add(session)
-
-	def removeSession(self, session):
-		self._sessions.remove(session)
-
-	def checkSession(self, session):
-		return session in self._sessions
-
-	def start(self, session):
-		self._session = session
+	def start(self):
 		OWFServerProtocol.server = self
-		OWFServerProtocol.session = session
 
 
 webSocketServer = OWFWebSocketServer()
