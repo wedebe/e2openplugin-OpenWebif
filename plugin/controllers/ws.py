@@ -23,37 +23,36 @@
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
 from autobahn.twisted.resource import WebSocketResource
 
-import voluptuous as vol
 import json
 
 class OWFServerProtocol(WebSocketServerProtocol):
 
 	TYPE_RESULT = "result"
-	TYPE_AUTH_REQUIRED = "auth_required"
-	TYPE_AUTH_OK = "auth_ok"
-	TYPE_AUTH = "auth"
+	# TYPE_AUTH_REQUIRED = "auth_required"
+	# TYPE_AUTH_OK = "auth_ok"
+	# TYPE_AUTH = "auth"
 	TYPE_PING = "ping"
 
-	REQUEST_BASE_SCHEMA = vol.Schema({
-		vol.Required('id'): int,
-	})
+	# REQUEST_BASE_SCHEMA = vol.Schema({
+	# 	vol.Required('id'): int,
+	# })
 
-	BASE_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
-		vol.Required('type'): vol.Any(
-				TYPE_AUTH,
-				TYPE_PING
-			)
-	}, extra=vol.ALLOW_EXTRA)
+	# BASE_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
+	# 	vol.Required('type'): vol.Any(
+	# 			TYPE_AUTH,
+	# 			TYPE_PING
+	# 		)
+	# }, extra=vol.ALLOW_EXTRA)
 
-	AUTH_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
-		vol.Required('type'): TYPE_AUTH,
-	})
+	# AUTH_MESSAGE_SCHEMA = REQUEST_BASE_SCHEMA.extend({
+	# 	vol.Required('type'): TYPE_AUTH,
+	# })
 
 	server = None
 
 	def __init__(self, *args, **kwargs):
-		self._authenticated = True
-		self._failedAuthCount = 0
+		# self._authenticated = True
+		# self._failedAuthCount = 0
 		self._requestID = 0
 
 	def onClose(self, wasClean, code, reason):
@@ -67,37 +66,17 @@ class OWFServerProtocol(WebSocketServerProtocol):
 		return None
 
 	def onOpen(self):
-		self.checkAuth()
-
-	def checkAuth(self):
-		if self._authenticated:
-			self.sendAuthOk()
-			return
-		else:
-			self.sendAuthRequest()
-
-	def sendAuthOk(self):
-		self.sendJSON({"type": self.TYPE_AUTH_OK)
-
-	def sendAuthRequest(self):
-		self.sendJSON({"type": self.TYPE_AUTH_REQUIRED})
-
-	def validate(self, msg, validator):
-		try:
-			return validator(msg)
-		except Exception as e:
-			self.sendError(msg.get("id", -1), -1, "INVALID CALL! %s" %e)
+		print("open")
 
 	def onMessage(self, payload, isBinary):
 		if isBinary:
-			print"Binary message received: {0} bytes".format(len(payload)))
+			print("Binary message received: {0} bytes".format(len(payload)))
 		else:
 			msg = json.loads(payload, 'utf8')
 			print("> %s" % (msg))
 			self.onJSONMessage(msg)
 
 	def onJSONMessage(self, msg):
-		msg = self.validate(msg, self.BASE_MESSAGE_SCHEMA)
 		if not msg:
 			return
 		self._requestID = msg["id"]
@@ -141,7 +120,7 @@ class OWFWebSocketServer():
 	def __init__(self):
 		self.session = None
 		self._sessions = set()
-		self._factory = WebSocketServerFactory(url=None, debug=False, debugCodePaths=False)
+		self._factory = WebSocketServerFactory(url=None)
 		self._factory.setProtocolOptions(autoPingInterval=15, autoPingTimeout=3)
 		self._factory.protocol = OWFServerProtocol
 		self.root = WebSocketResource(self._factory)
