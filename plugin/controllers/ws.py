@@ -29,7 +29,6 @@ class OWFServerProtocol(WebSocketServerProtocol):
 
 	TYPE_RESULT = "result"
 	TYPE_PING = "ping"
-
 	server = None
 
 	def onClose(self, wasClean, code, reason):
