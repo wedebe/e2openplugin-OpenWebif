@@ -20,8 +20,12 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 ##########################################################################
 
+
+from __future__ import print_function
+from twisted.internet import reactor, task
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
 from autobahn.twisted.resource import WebSocketResource
+from .models.info import getStatusInfo
 
 import json
 
@@ -34,84 +38,29 @@ class OWFServerProtocol(WebSocketServerProtocol):
 	def onClose(self, wasClean, code, reason):
 		print("WebSocket connection closed: {0}".format(code))
 
-	# def _disconnect(self, code=3401, reason=u'Authentication failed'):
-	# 	self.sendClose(code=code, reason=reason)
-
-	def onConnecting(self, request):
-		print("Client connectinging: {0}".format(request.peer))
-		return None
-
-	def onConnect(self, request):
-		print("Client connecting: {0}".format(request.peer))
-		return None
-
-	def onOpen(self):
-		print("open")
-
-	def onMessage(self, payload, isBinary):
-		if isBinary:
-			print("Binary message received: {0} bytes".format(len(payload)))
-		else:
-			# msg = json.loads(payload, 'utf8')
-			msg = payload
-			print("> %s" % (msg))
-			self.sendMessage(msg)
-			# self.onJSONMessage(msg)
-
-	# def onJSONMessage(self, msg):
-	# 	if not msg:
-	# 		return
-	# 	print("> (JSON) %s" % (msg))
-		# self._requestID = msg["id"]
-		# do = 'do_{}'.format(msg['type'])
-		# getattr(self, do)(msg)
-
-	# def sendJSON(self, msg):
-	# 	if "id" in msg:
-	# 		self._requestID += 1
-	# 		msg['id'] = self._requestID
-	# 	msg = json.dumps(msg).encode('utf8')
-	# 	print("< %s" % (msg))
-	# 	self.sendMessage(msg)
-
-	# def sendResult(self, id, result=None):
-	# 	msg = {
-	# 		"id": id,
-	# 		"type": self.TYPE_RESULT,
-	# 		"success": True,
-	# 		"result": result,
-	# 	}
-	# 	self.sendJSON(msg)
-
-	# def sendError(self, id, code, message=None):
-	# 	data = {
-	# 		"id": id,
-	# 		"type": self.TYPE_RESULT,
-	# 		"success": False,
-	# 		"error": {
-	# 			"code": code,
-	# 			"message": message,
-	# 		}
-	# 	}
-	# 	self.sendJSON(data)
-
-	# def do_ping(self, msg):
-	# 	self.sendJSON({"type": self.TYPE_PING})
-
 
 class BroadcastServerProtocol(WebSocketServerProtocol):
 
+	def onConnect(self, request):
+		debugLog("BSP: onConnect: {0}".format(request.peer))
+
 	def onOpen(self):
-		self.factory.register(self)
+		debugLog("BSP: onOpen")
+		self.factory.registerClient(self)
 
 	def onMessage(self, payload, isBinary):
 		if not isBinary:
 			msg = "{} from {}".format(payload.decode('utf8'), self.peer)
+			debugLog("BSP: onMessage: (!isBinary) %s" % (msg))
 			self.factory.broadcast(msg)
 
 	def connectionLost(self, reason):
+		debugLog("BSP: connectionLost")
 		WebSocketServerProtocol.connectionLost(self, reason)
-		self.factory.unregister(self)
+		self.factory.deregisterClient(self)
+
+	def onClose(self, wasClean, code, reason):
+		debugLog("BSP: onClose: {0}".format(reason))
 
 
 class BroadcastServerFactory(WebSocketServerFactory):
@@ -122,33 +71,43 @@ class BroadcastServerFactory(WebSocketServerFactory):
 	"""
 
 	def __init__(self, url):
+		debugLog("BSF: __init__")
 		WebSocketServerFactory.__init__(self, url)
 		self.clients = []
 		self.tickcount = 0
 		self.tick()
 
-	def tick(self):
-		self.tickcount += 1
-		self.broadcast("tick %d from server" % self.tickcount)
-		reactor.callLater(1, self.tick)
+		l = task.LoopingCall(self.tick)
+		l.start(1.0) # call every second
+		# l.stop() will stop the looping calls
 
-	def register(self, client):
+	def tick(self):
+		debugLog("BSF: tick")
+		# self.tickcount += 1
+		# self.broadcast("tick %d from server" % self.tickcount)
+		msg = json.dumps(getStatusInfo(self))
+		self.broadcast(msg)
+		# https://twistedmatrix.com/documents/12.3.0/core/howto/time.html
+		# reactor.callLater(1, self.tick)
+
+	def registerClient(self, client):
 		if client not in self.clients:
-			print("registered client {}".format(client.peer))
+			debugLog("BSF: registerClient {}".format(client.peer))
 			self.clients.append(client)
 
-	def unregister(self, client):
+	def deregisterClient(self, client):
 		if client in self.clients:
-			print("unregistered client {}".format(client.peer))
+			debugLog("BSF: deregisterClient: {}".format(client.peer))
 			self.clients.remove(client)
 
 	def broadcast(self, msg):
-		print("broadcasting message '{}' ..".format(msg))
-		for c in self.clients:
-			c.sendMessage(msg.encode('utf8'))
-			print("message sent to {}".format(c.peer))
+		for client in self.clients:
+			client.sendMessage(msg.encode('utf8'))
+			debugLog("BSF: broadcast (to {}): {}".format(client.peer, msg))
+		# debugLog("BSF: broadcast (to {} clients): {}".format(len(self.clients), msg))
 
 
+# for futute use
 class BroadcastPreparedServerFactory(BroadcastServerFactory):
 
 	"""
@@ -159,21 +118,29 @@ class BroadcastPreparedServerFactory(BroadcastServerFactory):
 	def broadcast(self, msg):
 		print("broadcasting prepared message '{}' ..".format(msg))
 		preparedMsg = self.prepareMessage(msg)
-		for c in self.clients:
-			c.sendPreparedMessage(preparedMsg)
-			print("prepared message sent to {}".format(c.peer))
+		for client in self.clients:
+			client.sendPreparedMessage(preparedMsg)
+			print("prepared message sent to {}".format(client.peer))
+			debugLog("BSF: broadcast (to {}): {}".format(client, msg))
+		# debugLog("BPSF: broadcast (to {} clients): {}".format(len(self.clients), msg))
 
 
-class OWFWebSocketServer():
+class OWIFWebSocketServer():
 	def __init__(self):
-		self.factory = WebSocketServerFactory(url=None)
-		self.factory.setProtocolOptions(autoPingInterval=15, autoPingTimeout=3)
-		self.factory.protocol = OWFServerProtocol #(self.topics)
-		self.root = WebSocketResource(self.factory)
-		OWFServerProtocol.server = None
+		debugLog("OSS: __init__")
+		ServerFactory = BroadcastServerFactory
+		# ServerFactory = BroadcastPreparedServerFactory
+
+		factory = ServerFactory(url=None)
+		factory.setProtocolOptions(autoPingInterval=15, autoPingTimeout=3)
+		factory.protocol = BroadcastServerProtocol #(self.topics)
+		self.resource = WebSocketResource(factory)
+		# BroadcastServerProtocol.server = None
+		# start
+		BroadcastServerProtocol.server = self
 
 	def start(self):
-		OWFServerProtocol.server = self
+		debugLog("OSS: start")
 
 
-webSocketServer = OWFWebSocketServer()
+webSocketServer = OWIFWebSocketServer()
