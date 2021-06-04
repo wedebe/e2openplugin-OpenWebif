@@ -63,6 +63,19 @@ if PY3:
 else:
 	from cgi import escape as html_escape
 
+
+def getIPTVLink(ref):
+	first = ref.split(":")[0]
+	if first in ['4097', '5003', '5002', '5001'] or "%3A" in ref or "%3a" in ref:
+		if 'http' in ref:
+			if ref.index('http') < ref.rindex(':'):
+				ref = ref[:ref.rindex(':')]
+			ref = ref[ref.index('http'):]
+			ref = ref.replace('%3a', ':').replace('%3A', ':').replace('http://127.0.0.1:8088/', '')
+			return ref
+	return ''
+
+
 def filterName(name, encode=True):
 	if name is not None:
 		name = six.ensure_str(removeBadChars(six.ensure_binary(name)))
@@ -70,14 +83,17 @@ def filterName(name, encode=True):
 			return html_escape(name, quote=True)
 	return name
 
+
 def removeBadChars(val):
 	return val.replace(b'\x1a', b'').replace(b'\xc2\x86', b'').replace(b'\xc2\x87', b'').replace(b'\xc2\x8a', b'')
+
 
 def convertUnicode(val):
 	if PY3:
 		return val
 	else:
 		return six.text_type(val, 'utf_8', errors='ignore').encode('utf_8', 'ignore')
+
 
 def convertDesc(val, encode=True):
 	if val is not None:
@@ -139,7 +155,7 @@ def getCurrentService(session):
 			if epg_bouquet:
 				bqname = ServiceReference(epg_bouquet).getServiceName()
 				bqref = ServiceReference(epg_bouquet).ref.toString()
-		except:  # noqa: E722
+		except:  # nosec # noqa: E722
 			pass
 
 		return {
@@ -195,22 +211,22 @@ def getCurrentFullInfo(session):
 
 	try:
 		info = session.nav.getCurrentService().info()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		info = None
 
 	try:
 		subservices = session.nav.getCurrentService().subServices()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		subservices = None
 
 	try:
 		audio = session.nav.getCurrentService().audioTracks()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		audio = None
 
 	try:
 		ref = session.nav.getCurrentlyPlayingServiceReference().toString()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		ref = None
 
 	if ref is not None:
@@ -243,7 +259,7 @@ def getCurrentFullInfo(session):
 			idx += 1
 	try:
 		feinfo = session.nav.getCurrentService().frontendInfo()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		feinfo = None
 
 	frontendData = feinfo and feinfo.getAll(True)
@@ -265,7 +281,7 @@ def getCurrentFullInfo(session):
 
 	try:
 		frontendStatus = feinfo and feinfo.getFrontendStatus()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		frontendStatus = None
 
 	if frontendStatus is not None:
@@ -290,7 +306,7 @@ def getCurrentFullInfo(session):
 
 	try:
 		recordings = session.nav.getRecordings()
-	except:  # noqa: E722
+	except:  # nosec # noqa: E722
 		recordings = None
 
 	inf['rec_state'] = False
@@ -369,7 +385,7 @@ def getSatellites(stype):
 				service_type = _("Services")
 			try:
 				service_name = str(nimmanager.getSatDescription(orbpos))
-			except:  # noqa: E722
+			except:  # nosec # noqa: E722
 				if unsigned_orbpos == 0xFFFF:  # Cable
 					service_name = _("Cable")
 				elif unsigned_orbpos == 0xEEEE:  # Terrestrial
@@ -431,6 +447,7 @@ def getProtection(sref):
 						isProtected = '4'
 	return isProtected
 
+
 def getChannels(idbouquet, stype):
 	ret = []
 	idp = 0
@@ -452,6 +469,9 @@ def getChannels(idbouquet, stype):
 		chan['name'] = filterName(channel[1])
 		if chan['ref'].split(":")[0] == '5002':  # BAD fix !!! this needs to fix in enigma2 !!!
 			chan['name'] = chan['ref'].split(":")[-1]
+		# IPTV
+		chan['link'] = getIPTVLink(chan['ref'])
+
 		if not int(channel[0].split(":")[1]) & 64:
 			psref = parse_servicereference(channel[0])
 			chan['service_type'] = SERVICE_TYPE_LOOKUP.get(psref.get('service_type'), "UNKNOWN")
@@ -702,13 +722,13 @@ def getTimerEventStatus(event, eventLookupTable, timers=None):
 			timerDetails = {}
 			if timer.begin <= startTime and timer.end >= endTime:
 				if timer.disabled:
-					timerDetails = { 
+					timerDetails = {
 						'isEnabled': 0,
 						'basicStatus': 'timer disabled'
 					}
 				else:
-					timerDetails = { 
-						'isEnabled': 1, 
+					timerDetails = {
+						'isEnabled': 1,
 						'isZapOnly': int(timer.justplay),
 						'basicStatus': 'timer'
 					}
@@ -717,7 +737,7 @@ def getTimerEventStatus(event, eventLookupTable, timers=None):
 				except AttributeError:
 					timerDetails['isAutoTimer'] = 0
 				return timerDetails
-				
+
 	return None
 
 
@@ -741,6 +761,7 @@ def getEvent(ref, idev, encode=True):
 		info['genre'], info['genreid'] = convertGenre(event[8])
 		info['picon'] = getPicon(event[7])
 		info['timer'] = getTimerEventStatus(event, eventLookupTable, None)
+		info['link'] = getIPTVLink(event[7])
 		break
 	return {'event': info}
 
@@ -1070,20 +1091,20 @@ def getMultiEpg(self, ref, begintime=-1, endtime=None, Mode=1):
 	# Check if an event has an associated timer. Unfortunately
 	# we cannot simply check against timer.eit, because a timer
 	# does not necessarily have one belonging to an epg event id.
-	def getTimerEventStatus(event, eventLookupTable):	
+	def getTimerEventStatus(event, eventLookupTable):
 		startTime = event[eventLookupTable.index('B')]
 		endTime = event[eventLookupTable.index('B')] + event[eventLookupTable.index('D')] - 120
 		serviceref = event[eventLookupTable.index('R')]
-		if serviceref not in timerlist:	
+		if serviceref not in timerlist:
 			return None
-		for timer in timerlist[serviceref]:	
+		for timer in timerlist[serviceref]:
 			if timer.begin <= startTime and timer.end >= endTime:
 				basicStatus = 'timer'
 				isEnabled = 1
 				isAutoTimer = -1
 				if hasattr(timer, "isAutoTimer"):
 					isAutoTimer = timer.isAutoTimer
-				if timer.disabled:	
+				if timer.disabled:
 					basicStatus = 'timer disabled'
 					isEnabled = 0
 				timerDetails = {
@@ -1093,7 +1114,7 @@ def getMultiEpg(self, ref, begintime=-1, endtime=None, Mode=1):
 						'isAutoTimer': isAutoTimer
 					}
 				return timerDetails
-		
+
 		return None
 	ret = OrderedDict()
 	services = eServiceCenter.getInstance().list(eServiceReference(ref))
@@ -1240,7 +1261,7 @@ def getPicon(sname, pp=None, defaultpicon=True):
 			cname1 = filterName(cname).replace('/', '_')
 			if not PY3:
 				cname1 = cname1.encode('utf-8', 'ignore')
-			
+
 			if fileExists(pp + cname1 + ".png"):
 				return "/picon/" + cname1 + ".png"
 			if PY3:
@@ -1332,7 +1353,7 @@ def getServiceRef(name, searchinBouquetsOnly=False, bRef=None):
 					}
 
 	else:
-		refstr = '%s ORDER BY name'%(service_types_tv)
+		refstr = '%s ORDER BY name' % (service_types_tv)
 		serviceslist = serviceHandler.list(eServiceReference(refstr))
 		sfulllist = serviceslist and serviceslist.getContent("SN", True)
 		for sv in sfulllist:

@@ -69,6 +69,9 @@
 	}
 
 	.now-next__info {
+		justify-content: space-between;
+		display: flex;
+		flex-wrap: wrap;
 		flex: 4;
 		min-width: 320px;
 	}
@@ -80,9 +83,9 @@
 
 	.now-next__details {
 		display: flex;
-    flex-wrap: wrap;
-    width: 100%;
+		flex-wrap: wrap;
 		white-space: normal;
+		width: 48%;
 	}
 
 	.now-next__details--now {
@@ -98,6 +101,11 @@
 	.now-next__details--next {
 		opacity: 0.6;
 	}
+#if not $shownownextcolumns
+	.now-next__details {
+		flex: 1 0 100%;
+	}
+#end if
 </style>
 
 <div class="table-responsive block-header">
@@ -145,11 +153,8 @@
 
 					<button type="button" onclick="zapChannel('$channel.ref', '$channelName');" class="link--not-skinned" title="$tstrings['zap_to'] $channel.name"><i class="icon material-icons material-icons-centered">settings_remote</i></button>
 
-		#if '4097:' in $channel.ref
-			#set $rname = ":" + $channel.name
-			#set $lnk = $channel.ref.replace("4097:0:0:0:0:0:0:0:0:0:", "").replace("4097:0:1:0:0:0:0:0:0:0:", "")
-			#set $lnk = $lnk[:$lnk.rindex(':')].replace("%3a", ":").replace("%3A", ":")
-					<a href="$lnk" class="now-next__external-link link--not-skinned" target="extlink" title="$tstrings['open_in_new_window']"><i class="material-icons material-icons-centered">phonelink</i></a>
+		#if $channel.link != ""
+					<a href="$channel.link" class="now-next__external-link link--not-skinned" target="extlink" title="$tstrings['open_in_new_window']"><i class="material-icons material-icons-centered">phonelink</i></a>
 		#else
 			#set $epgDisabledState = ''
 			#if not 'now_title' in $channel
