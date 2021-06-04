@@ -44,6 +44,27 @@
     return Array.isArray(value) ? value : [value];
   }
 
+  function keyValueSortWeight(key, order = 'asc') {
+    return function innerSort(a, b) {
+      if (!a.hasOwnProperty(key) || !b.hasOwnProperty(key)) {
+        // key doesn't exist on either object
+        return 0;
+      }
+  
+      const varA = (typeof a[key] === 'string') ? a[key].toUpperCase() : a[key];
+      const varB = (typeof b[key] === 'string') ? b[key].toUpperCase() : b[key];
+  
+      let weight = 0;
+      if (varA > varB) {
+        weight = 1;
+      } else if (varA < varB) {
+        weight = -1;
+      }
+
+      return (order === 'desc') ? (weight * -1) : weight;
+    };
+  }
+
   function getAdjustedTimeString(timeString, adjustment) {
     const { hours = 0, minutes = 0 } = adjustment;
     try {
@@ -323,6 +344,7 @@
         owif.utils.debugLog(data);
         self.allAutoTimers = forceToArray(data['timer']);
         self.allAutoTimers.map((itm) => new AutoTimer(itm));
+        self.allAutoTimers.sort(keyValueSortWeight('name'));
 
         return self.allAutoTimers;
       },
@@ -349,6 +371,7 @@
             const searchType = valueLabelMap.autoTimers.searchType[atItem['searchType']] || '';
             const newNode = templateEl.content.firstElementChild.cloneNode(true);
 
+            newNode.querySelector('button[name="preview"]').onclick = (evt) => self.preview(atItem.id);
             newNode.querySelector('[name="rename"]').onclick = (evt) => self.renameEntry(atItem.id, atItem.name);
 
             const editEl = newNode.querySelector('a[href="#/at/edit?id={{id}}"]');
@@ -475,12 +498,12 @@
         }
       },
 
-      preview: async () => {
+      preview: async (id) => {
         document.getElementById('at-preview__progress').classList.toggle('hidden', false);
         document.getElementById('at-preview__no-results').classList.toggle('hidden', true);
-        const responseContent = await owif.utils.fetchData('/autotimer/test');
-        const data = responseContent['e2autotimertest'];
-        const autotimers = data['e2testtimer'] || [];
+        const responseContent = await owif.utils.fetchData('/autotimer/test?id='+id);
+        const data = responseContent['e2autotimersimulate'] || responseContent['e2autotimertest'];
+        const autotimers = data['e2testtimer'] || data['e2simulatedtimer'];
         const previewTbodyEl = document.getElementById('at-preview__list');
         const newNode = document.createElement('tbody');
         document.getElementById('at-preview__progress').classList.toggle('hidden', true);

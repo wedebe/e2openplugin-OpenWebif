@@ -124,11 +124,11 @@ def getTimers(session):
 
 		toggledisabled = 1
 		if timer.disabled:
-				toggledisabled = 0
+			toggledisabled = 0
 
 		toggledisabledimg = "off"
 		if timer.disabled:
-				toggledisabledimg = "on"
+			toggledisabledimg = "on"
 
 		asrefs = ""
 		achannels = GetWithAlternative(str(timer.service_ref), False)
@@ -175,6 +175,13 @@ def getTimers(session):
 
 		if six.PY2:
 			descriptionextended = six.text_type(descriptionextended, 'utf_8', errors='ignore').encode('utf_8', 'ignore')
+
+		recordingtype = "normal"
+
+		if timer.record_ecm:
+			recordingtype = "scrambled"
+			if timer.descramble:
+				recordingtype = "descrambled"
 
 		# switch back to old way.
 		#fuzzyBegin = ' '.join(str(i) for i in FuzzyTime(timer.begin, inPast = True)[1:])
@@ -224,7 +231,8 @@ def getTimers(session):
 			"pipzap": pipzap,
 			"isAutoTimer": isAutoTimer,
 			"allow_duplicate": allow_duplicate,
-			"autoadjust": autoadjust
+			"autoadjust": autoadjust,
+			"recordingtype": recordingtype
 		})
 
 	return {
@@ -233,7 +241,7 @@ def getTimers(session):
 	}
 
 
-def addTimer(session, serviceref, begin, end, name, description, disabled, justplay, afterevent, dirname, tags, repeated, vpsinfo=None, logentries=None, eit=0, always_zap=-1, pipzap=-1, allow_duplicate=1, autoadjust=-1):
+def addTimer(session, serviceref, begin, end, name, description, disabled, justplay, afterevent, dirname, tags, repeated, recordingtype, vpsinfo=None, logentries=None, eit=0, always_zap=-1, pipzap=-1, allow_duplicate=1, autoadjust=-1):
 	rt = session.nav.RecordTimer
 
 	if not dirname:
@@ -306,6 +314,18 @@ def addTimer(session, serviceref, begin, end, name, description, disabled, justp
 			if hasattr(timer, "pipzap"):
 				timer.pipzap = pipzap == 1
 
+		if recordingtype:
+			timer.descramble = {
+				"normal": True,
+				"descrambled": True,
+				"scrambled": False,
+				}[recordingtype]
+			timer.record_ecm = {
+				"normal": False,
+				"descrambled": True,
+				"scrambled": True,
+				}[recordingtype]
+
 	except Exception as e:
 		print(str(e))
 		return {
@@ -319,7 +339,7 @@ def addTimer(session, serviceref, begin, end, name, description, disabled, justp
 	}
 
 
-def addTimerByEventId(session, eventid, serviceref, justplay, dirname, tags, vpsinfo, always_zap, afterevent, pipzap, allow_duplicate, autoadjust):
+def addTimerByEventId(session, eventid, serviceref, justplay, dirname, tags, vpsinfo, always_zap, afterevent, pipzap, allow_duplicate, autoadjust, recordingtype):
 	event = eEPGCache.getInstance().lookupEventId(eServiceReference(serviceref), eventid)
 	if event is None:
 		return {
@@ -346,6 +366,7 @@ def addTimerByEventId(session, eventid, serviceref, justplay, dirname, tags, vps
 		dirname,
 		tags,
 		0,
+		recordingtype,
 		vpsinfo,
 		None,
 		eit,
@@ -359,7 +380,7 @@ def addTimerByEventId(session, eventid, serviceref, justplay, dirname, tags, vps
 # NEW editTimer function to prevent delete + add on change
 # !!! This new function must be tested !!!!
 # TODO: exception handling
-def editTimer(session, serviceref, begin, end, name, description, disabled, justplay, afterEvent, dirname, tags, repeated, channelOld, beginOld, endOld, vpsinfo, always_zap, pipzap, allow_duplicate, autoadjust):
+def editTimer(session, serviceref, begin, end, name, description, disabled, justplay, afterEvent, dirname, tags, repeated, channelOld, beginOld, endOld, recordingtype, vpsinfo, always_zap, pipzap, allow_duplicate, autoadjust):
 	channelOld_str = ':'.join(str(channelOld).split(':')[:11])
 	rt = session.nav.RecordTimer
 	for timer in rt.timer_list + rt.processed_timers:
@@ -402,6 +423,18 @@ def editTimer(session, serviceref, begin, end, name, description, disabled, just
 				if autoadjust == -1:
 					autoadjust = config.recording.adjust_time_to_event.value and 1 or 0
 				timer.autoadjust = autoadjust
+
+			if recordingtype:
+				timer.descramble = {
+					"normal": True,
+					"descrambled": True,
+					"scrambled": False,
+					}[recordingtype]
+				timer.record_ecm = {
+					"normal": False,
+					"descrambled": True,
+					"scrambled": True,
+					}[recordingtype]
 
 			# TODO: multi tuner test
 			sanity = TimerSanityCheck(rt.timer_list, timer)
