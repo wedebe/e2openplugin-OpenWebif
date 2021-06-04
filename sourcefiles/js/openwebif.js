@@ -1,8 +1,8 @@
 //******************************************************************************
 //* openwebif.js: openwebif base module
-//* Version 1.2.20
+//* Version 1.2.22
 //******************************************************************************
-//* Copyright (C) 2011-2020 E2OpenPlugins
+//* Copyright (C) 2011-2021 E2OpenPlugins
 //*
 //* V 1.0   - Initial Version
 //* V 1.1   - add movie move and rename
@@ -33,6 +33,8 @@
 //* V 1.2.18 - rename stream.m3u8 to <channelname>.m3u8
 //* V 1.2.19 - fixed missing <channelname> when requesting a transcoding stream m3u8
 //* V 1.2.20 - timer pipzap option
+//* V 1.2.21 - improve getallservices
+//* V 1.2.22 - add recoding type to timer edit
 //*
 //* Authors: skaman <sandro # skanetwork.com>
 //* 		 meo
@@ -529,7 +531,7 @@ function cbAddTimerEvent(state) {
 }
 
 function addTimerEvent(sRef, eventId, justplay, callback) {
-
+	
 	var url = "/api/timeraddbyeventid?sRef=" + sRef + "&eventid=" + eventId;
 	if(justplay)
 		url += "&eit=0&disabled=0&justplay=1&afterevent=3";
@@ -627,7 +629,7 @@ function delTimerEvent(sRef,eventId) {
 				var end = result.event.begin + result.event.duration + 60 * result.event.recording_margin_after;
 				var t = decodeURIComponent(result.event.title);
 				if (confirm(tstr_del_timer + ": " + t) === true) {
-					webapi_execute("/api/timerdelete?sRef=" + sRef + "&begin=" + begin + "&end=" + end, 
+					webapi_execute("/api/timerdelete?sRef=" + sRef + "&begin=" + begin + "&end=" + end + "&eit=" + eventId, 
 						function() { $('.event[data-id='+eventId+'] .timer').remove(); } 
 					);
 				}
@@ -1181,6 +1183,7 @@ function editTimer(serviceref, begin, end) {
 							$('#enabled').prop("checked", timer.disabled == 0);
 							$('#justplay').prop("checked", timer.justplay);
 							$('#afterevent').val(timer.afterevent);
+							$('#recordingtype').val(timer.recordingtype);
 							$('#errorbox').hide();
 							var flags=timer.repeated;
 							for (var i=0; i<7; i++) {
@@ -1349,6 +1352,7 @@ function addTimer(evt,chsref,chname,top,isradio) {
 	$('#allow_duplicate').prop("checked", true);
 	$('#autoadjust').prop("checked", false);
 	$('#afterevent').val(3);
+	$('#recordingtype').val("");
 	$('#errorbox').hide();
 
 	for (var i=0; i<7; i++) {
@@ -1726,10 +1730,13 @@ function ChangeTheme(theme)
 
 function directlink()
 {
-	var hash = window.location.hash.replace('#','');
+	// #myepg?epgmode=tv
+	var hashParts = window.location.hash.match(/^#((.*?[^\?]*)(\?.*)*)/) || [null, '', ''];
+	var page = hashParts[2]; // myepg
+	var hash = hashParts[1]; // myepg?epgmode=tv
 	var lnk = 'ajax/tv';
-
-	switch (hash)
+	
+	switch (page)
 	{
 		case 'radio':
 		case 'movies':
@@ -1739,13 +1746,15 @@ function directlink()
 		case 'bqe':
 		case 'epgr':
 		case 'myepg':
+		case 'epgdialog':
 		case 'timers':
 		case 'satfinder':
 		case 'boxinfo':
 		case 'webtv':
 		case 'about':
 		case 'screenshot':
-			lnk='ajax/' + p;
+		case 'current':
+			lnk = 'ajax/' + hash;
 			break;
 	}
 	
@@ -2082,7 +2091,7 @@ function GetAllServices(callback,radio)
 		}
 	}
 	$.ajax({
-		url: '/api/getallservices?renameserviceforxmbc=1'+ru,
+		url: '/api/getallservices?renameserviceforxmbc=1&nolastscanned=1'+ru,
 		dataType: "json",
 		success: function ( data ) {
 			var sdata = JSON.stringify(data);
@@ -2105,7 +2114,7 @@ function testPipStatus() {
                                 buttonsSwitcher(pipinfo.pip);
 			}
 		}
-	})
+	});
 }
 
 var SSHelperObj = function () {

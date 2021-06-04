@@ -1,7 +1,7 @@
 #from six.moves.urllib.parse import quote
 #from time import localtime, strftime
 #from Plugins.Extensions.OpenWebif.controllers.i18n import tstrings
-#from Plugins.Extensions.OpenWebif.vtiaddon import skinColor, MinMovieList
+#from Plugins.Extensions.OpenWebif.vtiaddon import MinMovieList
 
 <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
 	<div class="card">
@@ -29,16 +29,33 @@
 			<div id="content_main">
 				<div id="tvcontentmain">
 					<div class="row clearfix m-l-20 m-b-20">
-							<nav>
+						<nav>
 #set $path=''
-#for $dir in $directory[0:-1].split("/")[1:-1]
+#set $dirs = $directory[0:].split("/")[1:-1]
+#set $dirDepth = len($dirs)
+#set $index = 1
+
+#for $dir in $dirs
 	#set $path += '/' + $dir
-								<a href="javascript:void(0);" class="theme-link-color p-r-10" onclick="load_maincontent_spin('ajax/movies?dirname='+escape('$path'));">
-									<i class="material-icons material-icons-centered">folder_open</i>$dir
+	#if $index != $dirDepth
+								<a href="javascript:void(0);" class="link--skinned p-r-10" onclick="load_maincontent_spin('ajax/movies?dirname='+escape('$path'));">
+									<i class="material-icons material-icons-centered">folder_open</i>
+									$dir
 								</a>
 								<i class="material-icons material-icons-centered">chevron_right</i>
+	#else
+		#set $movieCountText = _("%d movies") % len($movies)
+								<span class="p-r-10 p-l-0" id="moviedirbtn">
+									<i class="material-icons material-icons-centered">folder_open</i>
+									$dir
+								</span>
+								[ $movieCountText ]
+	#end if
+	#set $index = $index + 1
 #end for
+
 #if $len($bookmarks)
+							<i class="material-icons material-icons-centered">chevron_right</i>
 							<span class="form-group" style="width: auto;">
 								<select class="form-control" id="directory" style="display: inline-block; padding-left: 0; width: auto;">
 									<option>&rdsh; $tstrings['subdirectories']</option>
@@ -47,21 +64,12 @@
 	#end for
 								</select>
 							</span>
-#else
-	#if $directory != '/'
-	#set $lastDir = $directory[0:-1].split("/")[-1]
-	#set $movieCountText = _("%d movies") % len($movies)
-								<span class="p-r-10 p-l-0" id="moviedirbtn">
-									<i class="material-icons material-icons-centered">folder_open</i>$lastDir
-								</span>
-								[ $movieCountText ]
-	#end if
 #end if
-
-</nav>
+						</nav>
 					</div>
 					#set $count = 0
 					#for $movie in $movies
+					#set $mname = $movie.eventname.replace("\"", r"'")
 					<div class="row clearfix">
 						<div class="col-xs-12" id="movies">
 								<div class="card" id="$count">
@@ -74,14 +82,14 @@
 													<ul class="header-dropdown">
 														<li><span role="button"><a href="javascript:void(0);" onclick="playRecording('$quote($movie.serviceref)');" title="$tstrings['playback']"><i class="material-icons material-icons-centered">play_circle_outline</i></a></span></li>
 														#if $transcoding
-														<li><span role="button"><a href="javascript:void(0);" onclick="jumper80('$quote($movie.filename)');" title="$tstrings['stream']: $movie.eventname"><i class="material-icons material-icons-centered">tv</i></a></span></li>
-														<li><span role="button"><a href="javascript:void(0);" onclick="jumper8003('$quote($movie.filename)');" title="$tstrings['stream'] ($tstrings['transcoded']): $movie.eventname"><i class="material-icons material-icons-centered">phone_android</i></a></span></li>
+														<li><span role="button"><a href="javascript:void(0);" onclick="jumper80('$quote($movie.filename)');" title="$tstrings['stream']: $mname"><i class="material-icons material-icons-centered">tv</i></a></span></li>
+														<li><span role="button"><a href="javascript:void(0);" onclick="jumper8003('$quote($movie.filename)');" title="$tstrings['stream'] ($tstrings['transcoded']): $mname"><i class="material-icons material-icons-centered">phone_android</i></a></span></li>
 														#else
-														<li><span role="button"><a href="web/ts.m3u?file=$quote($movie.filename)" title="$tstrings['stream'] $movie.eventname" target="_blank"><i class="material-icons material-icons-centered">tv</i></a></span></li>
+														<li><span role="button"><a href="web/ts.m3u?file=$quote($movie.filename)" title="$tstrings['stream'] $mname" target="_blank"><i class="material-icons material-icons-centered">tv</i></a></span></li>
 														#end if
 														
-														#set $eventname_escaped =  $movie.eventname.replace("'", r"\'")
-														<li><span role="button"><a href="/file?action=download&file=$quote($movie.filename)" title="$tstrings['download'] $movie.eventname"><i class="material-icons material-icons-centered">cloud_download</i></a></span></li>
+														#set $eventname_escaped =  $movie.eventname.replace("'", r"\'").replace('"', r"\'")
+														<li><span role="button"><a href="/file?action=download&file=$quote($movie.filename)" title="$tstrings['download'] $mname"><i class="material-icons material-icons-centered">cloud_download</i></a></span></li>
 														<li><span role="button"><a href='javascript:void(0);' onclick="renameMovie('$quote($movie.serviceref)','$eventname_escaped');" title="$tstrings['rename_recording']"><i class="material-icons material-icons-centered">edit</i></a></span></li>
 														<li><span role="button"><a href='javascript:void(0);' onclick="deleteMovie('$quote($movie.serviceref)', '$count', '$eventname_escaped'); return false;" title="$tstrings['delete_recording']"><i class="material-icons material-icons-centered">delete</i></a></span></li>
 													</ul>
@@ -101,7 +109,7 @@
 																</div>
 															#end if
 															<div class="progress progress-striped" style="margin-bottom:0px;width:35%;max-width:200px;min-width:100px;height:10px;">
-																<div class="progress-bar bg-$skinColor" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:$size%;"></div>
+																<div class="progress-bar bg--skinned" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:$size%;"></div>
 															</div>
 															<span>$movie.length min. / $movie.filesize_readable</span>
 												</div>
@@ -136,7 +144,7 @@
 #if $len($bookmarks)
 	jQuery(function() {
 		jQuery('#directory').change(function() {
-			load_maincontent_spin('ajax/movies?dirname=' + escape(jQuery(this).val()));
+			load_maincontent_spin('ajax/movies?dirname=' + escape(jQuery(this).val()).replace('+','%2B'));
 		});
 	});
 #end if

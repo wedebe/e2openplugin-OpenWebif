@@ -1,5 +1,31 @@
-## Version 1.4.0
+## Version 1.4.8
 ## (in development)
+* add recording type to timer api
+
+## Version 1.4.7
+* add filter paramter to ipkg api
+
+## Version 1.4.6
+* fix memory leak in movielist by using internal code #751
+
+## Version 1.4.5
+* fix sleeptimer #1295
+* fix terminal for VTi #1293
+
+## Version 1.4.4
+* improve api movielist recursive #1241
+
+## Version 1.4.3
+* improve ipkg
+* use responsive UI for mobile devices
+
+## Version 1.4.2
+* add new api getpicon
+
+## Version 1.4.1
+* add new api getserviceref
+
+## Version 1.4.0
 * support python 3
 * huge update for the responsive UI by wedebe
 

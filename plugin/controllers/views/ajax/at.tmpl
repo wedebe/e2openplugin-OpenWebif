@@ -34,6 +34,10 @@ input#to,input#from,.text.number {width:60px;}
 								<input type="text" id="match">
 								<!-- <label for="searchType">$tstrings['at_search_type']:</label> -->
 								<select id="searchType">
+								#for $searchType in $searchTypes
+									<option value="$searchType">$tstrings['at_'+$searchType+'_match']</option>
+								#end for
+								<!--
 								<option value="partial" selected="selected">$tstrings['at_partial_match']</option>
 								<option value="exact">$tstrings['at_exact_match']</option>
 								<option value="description">$tstrings['at_description_match']</option>
@@ -43,6 +47,7 @@ input#to,input#from,.text.number {width:60px;}
 								#if 'start' in $searchTypes
 									<option value="start">$tstrings['at_start_match']</option>
 								#end if
+								-->
 								</select>
 								<!-- <br><label for="searchCase">$tstrings['at_search_strictness']:</label> -->
 								<select id="searchCase">
@@ -68,10 +73,10 @@ input#to,input#from,.text.number {width:60px;}
 								<br><label for="timeFrame">$tstrings['at_datespan']:</label>
 								<input type="checkbox" id="timeFrame" value="">
 									<span id="timeFrameE">
-									<label for="after">$tstrings['at_datespan_before']:</label>
+									<label for="after">$tstrings['at_datespan_to']:</label>
 									<input type="text" id="after" value="" class="text date">
 									<input type="checkbox" id="timeFrameAfter" value="">
-									<label for="before">$tstrings['at_datespan_after']:</label>
+									<label for="before">$tstrings['at_datespan_from']:</label>
 									<span id="beforeE"><input type="text" id="before" value="" class="text date"></span>
 									</span>
 								<br><label for="timerOffset">$tstrings['at_timer_offset']:</label>
@@ -306,10 +311,15 @@ input#to,input#from,.text.number {width:60px;}
 <form id="uploadrestore" style="display:none" action"uploadrestore"="" method="post" enctype="multipart/form-data" encoding="multipart/form-data">
 	<input type="file" name="rfile" id="rfile">
 </form>
-<script type="text/javascript" src="/js/at-2.9.min.js"></script>
+<script type="text/javascript" src="/js/at.min.js?v2.11"></script>
 <script type="text/javascript">
+#if $showiptvchannelsinselection
+var noiptv=false;
+#else
+var noiptv=true;
+#end if
 #raw
-$(function() { InitPage();});
+$(function() { InitPage(noiptv);});
 #end raw
 </script>
 <link rel="stylesheet" type="text/css" href="/css/chosen.min.css" />

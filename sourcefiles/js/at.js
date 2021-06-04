@@ -1,9 +1,9 @@
 //******************************************************************************
 //* at.js: openwebif Autotimer plugin
-//* Version 2.9
+//* Version 2.12
 //******************************************************************************
-//* Copyright (C) 2014-2020 Joerg Bleyel
-//* Copyright (C) 2014-2020 E2OpenPlugins
+//* Copyright (C) 2014-2021 Joerg Bleyel
+//* Copyright (C) 2014-2021 E2OpenPlugins
 //*
 //* V 1.0 - Initial Version
 //* V 1.1 - Support translation, small ui fixes
@@ -25,6 +25,9 @@
 //* V 2.7 - backup / restore
 //* V 2.8 - fix #960
 //* V 2.9 - fix #1028
+//* V 2.10 - iptv, lastscanned filter
+//* V 2.11 - improve getallservices
+//* V 2.12 - fix test request
 //*
 //* Authors: Joerg Bleyel <jbleyel # gmx.net>
 //* 		 plnick
@@ -234,8 +237,11 @@ function checkValues () {
 		$('#vpsE').hide();
 }
 
-function InitPage() {
+var ATnoiptv = false;
 
+function InitPage(noiptv) {
+
+	ATnoiptv = noiptv;
 	$('#timeSpan').click(function() { checkValues();});
 	$('#timeSpanAE').click(function() { checkValues();});
 	$('#timeFrame').click(function() { checkValues();});
@@ -398,9 +404,42 @@ function getTags()
 	});
 }
 
+
+function ATGetAllServices(callback,radio)
+{
+	if (typeof callback === 'undefined')
+		return;
+	if (typeof radio === 'undefined')
+		radio = false;
+	
+	ru = "";
+	if (radio)
+	{
+		v += "r";
+		vd += "r";
+		ru = "&type=radio";
+	}
+
+	niptv = "";
+	if(ATnoiptv)
+	{
+		ru = "&noiptv=1";
+	}
+	
+	$.ajax({
+		url: '/api/getallservices?nolastscanned=1'+ ru + niptv,
+		dataType: "json",
+		success: function ( data ) {
+			var sdata = JSON.stringify(data);
+			var bqs = data['services'];
+			FillAllServices(bqs,callback);
+		}
+	});
+}
+
 function getAllServices()
 {
-	GetAllServices(function ( options , boptions) {
+	ATGetAllServices(function ( options , boptions) {
 		$("#channels").append( options);
 		$('#channels').trigger("chosen:updated");
 		$("#bouquets").append( boptions);
@@ -1023,15 +1062,20 @@ function test_simulateAT(simulate)
 	$("#simtb").append("<tr><td COLSPAN=6>"+loadspinner+"</td></tr>");
 
 	var link = simulate ? "simulate":"test";
-	var tag = simulate ? "e2simulatedtimer":"e2testtimer";
-	
+
+	if(!simulate && CurrentAT)
+	{
+		link += "?id=" + CurrentAT.id;
+	}
+
 	$.ajax({
 		type: "GET", url: "/autotimer/" +link,
 		dataType: "xml",
 		success: function (xml)
 		{
-			var lines= [];
-			$(xml).find(tag).each(function () {
+			var lines = [];
+			
+			$(xml).find('e2simulatedtimer,e2testtimer').each(function () {
 				var line = '<tr>';
 				line += '<td>' + $(this).find('e2state').text() + '</td>';
 				line += '<td>' + $(this).find('e2autotimername').text() + '</td>';
@@ -1056,7 +1100,7 @@ function test_simulateAT(simulate)
 				line += '</tr>';
 				lines.push(line);
 			});
-			
+		
 			$("#simtb").empty();
 			$(lines).each(function(idx,val) {
 				$("#simtb").append(val);
@@ -1069,6 +1113,7 @@ function test_simulateAT(simulate)
 		}
 	});
 }
+
 
 function parseAT()
 {
@@ -1165,8 +1210,7 @@ function setAutoTimerSettings()
 	var v = $('#ats_add_autotimer_to_tags').is(':checked') ? "true":"";
 	reqs += "&add_autotimer_to_tags=" + v;
 	v = $('#ats_add_name_to_tags').is(':checked') ? "true":"";
-	reqs += "&add_name_to_tags=" + v
-	
+	reqs += "&add_name_to_tags=" + v;
 	reqs += "&refresh=" + $('#ats_refresh').val();
 	reqs += "&editor=" + $('#ats_editor').val();
 	
@@ -1212,7 +1256,7 @@ function importAT () {
 }
 
 function prepareRestore (ff) {
-	var fn = ff.val()
+	var fn = ff.val();
 	fn = fn.replace('C:\\fakepath\\','');
 	if (confirm(tstr_bqe_restore_question + ' ( ' + fn + ') ?') === false) {
 		return;
@@ -1224,7 +1268,7 @@ function prepareRestore (ff) {
 	{
 		var formData = new FormData(this);
 		$.ajax({
-			url: '/autotimer/uploadrestore',
+			url: '/autotimer/uploadfile',
 			type: 'POST',
 			data:  formData,
 			mimeType:"multipart/form-data",

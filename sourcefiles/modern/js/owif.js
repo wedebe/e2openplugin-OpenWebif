@@ -6,7 +6,50 @@ const debugMsg = (msg) => {
   console.info('%cOWIF', debugTagStyle, msg);
 }
 class Utils { 
-  constructor() {}
+  constructor() {
+    self = this;
+  }
+
+  // TODO: honour owif log setting
+	debugLog = (...args) => console.debug(...args);
+
+	regexDateFormat = new RegExp(/\d{4}-\d{2}-\d{2}/);
+
+  // convert html date input format (yyyy-mm-dd) to serial
+  // JSDoc
+  // /**
+  //  * Convert a string containing two comma-separated numbers into a point.
+  //  * @param {string} str - The string containing two comma-separated numbers.
+  //  * @return {Point} A Point object.
+  //  */
+	toUnixDate = (date) => (Date.parse(`${date}Z`)) / 1000; // `Z` is UTC designator
+
+  // 1:134:1 is bouquetroot
+  isBouquet = (sref) => (!sref.startsWith('1:134:1') && sref.includes('FROM BOUQUET'));
+
+  fetchData = async (url, options = { method: 'get', ...{} }) => {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        self.debugLog(contentType);
+        if (!!contentType && contentType.includes('application/json')) {
+          const responseJson = await response.json();
+          return responseJson;
+        } else {
+          // eg. application/xhtml+xml
+          const responseText = await response.text();
+          return xml2json(responseText);
+        }
+
+      } else {
+        throw new Error(response.statusText || response.status);
+      }
+    } catch (ex) {
+      throw new Error(ex);
+    };
+  }
 
   getStrftime(epoch = new Date()) {
     const theDate = new Date(Math.round(epoch) * 1000);
@@ -70,8 +113,9 @@ class API {
     }
   }
 
-  async getAllServices() {
-    let response = await fetch('/api/getallservices');
+  async getAllServices(noiptv) {
+    let niptv = (noiptv==true) ? "&noiptv=1" : "";
+    let response = await fetch('/api/getallservices?nolastscanned=1' + niptv);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     } else {
@@ -115,7 +159,9 @@ class API {
 }
 
 class GUI { 
-  constructor() {}
+  constructor() {
+    this.initEventHandlers();
+  }
 
   /* TODO: i10n */
   choicesConfig = {
@@ -125,7 +171,7 @@ class GUI {
     shouldSort: false,
     searchResultLimit: 100,
     placeholder: true,
-    renderSelectedChoices: 'always',
+    // renderSelectedChoices: 'always',
     itemSelectText: '',
     /*
       loadingText: 'Loading...',
@@ -136,6 +182,28 @@ class GUI {
       callbackOnInit: null,
     */
   };
+
+  initEventHandlers() {
+    const self = this;
+
+    const re = new RegExp(/#\/?(.*)\??(.*)/gi);
+  
+    function locationHashChanged(evt) {
+      const hash = evt.target.location.hash;
+      // TODO: transition all hash urls to #/ format
+			const targetPage = hash.replace('#/', '#').split('/')[0];
+			const targetUrl = targetPage.replace(re, '\/ajax/$1');
+      targetPage && load_maincontent_spin(targetUrl);
+    } 
+  
+    window.onhashchange = locationHashChanged;  
+
+    document.querySelectorAll('input[name="skinpref"]').forEach((input) => {
+      input.onchange = () => {
+        self.skinPref = event.target.value;
+      }
+    });
+  }
   
   fullscreen(state, el) {
     if (state === true) {
@@ -151,63 +219,35 @@ class GUI {
         debugMsg('GUI:fullscreen toggled');
       });
     }
-  } 
+  }
 
-  populateAutoTimerOptions() {
+  get skinPref() {
+    return document.body.dataset.skinpref || '';
+  }
+
+  set skinPref(newValue) {
+    const self = this;
+    const cssClassPrefix = 'skin--';
+    const oldValue = self.skinPref;
+
+    // TODO: success/failure message
+    fetch(`/api/setskincolor?skincolor=${newValue}`);
+
+    document.body.classList.replace(`${cssClassPrefix}${oldValue}`, `${cssClassPrefix}${newValue}`);
+    document.body.dataset.skinpref = newValue;
+  }
+
+  preparedChoices() {
     const populatedChoices = {};
-    const selectChoicesAttr = 'data-select-choices';
+    const selectChoicesAttr = 'data-choices-select';
     const selectChoicesElements = document.querySelectorAll(`[${selectChoicesAttr}]`);
-    const api = new API();
 
     selectChoicesElements.forEach((el) => {
-      if (el.getAttribute(`${selectChoicesAttr}`) === 'tags') {
-        // this.choicesConfig.addItems = true;
-        // this.choicesConfig.editItems = true;
-        this.choicesConfig.shouldSort = true;
-      } else {
-        this.choicesConfig.shouldSort = false;
-      }
-      // this.choicesConfig.addItems = true;
-      // this.choicesConfig.editItems = true;
-      populatedChoices[el.getAttribute(`${selectChoicesAttr}`)] = new Choices(el, this.choicesConfig);
+      let elConfig = el.dataset['choicesConfig'] || '{}';
+      elConfig = (elConfig) ? JSON.parse(elConfig) : {};
+      elConfig = Object.assign({}, this.choicesConfig, elConfig);
+      populatedChoices[el.getAttribute(`${selectChoicesAttr}`)] = new Choices(el, elConfig);
     });
-
-    api.getTags().then((result) => {
-      result.sort();
-      const opts = result.map((tag) => {
-        return {
-          value: tag,
-          label: tag,
-        }
-      });
-      populatedChoices['tags'].setChoices(
-        opts,
-        'value',
-        'label',
-        false,
-      );
-    }).catch(e => console.warn(e));
-    
-    api.getAllServices().then((result) => {
-      const opts = result['bouquets'].map((bouquet) => {
-        return {
-          label: bouquet.name,
-          choices: bouquet.channels,
-        }
-      });
-      populatedChoices['bouquets'].setChoices(
-        result['bouquets'],
-        'sRef',
-        'name',
-        false,
-      );
-      populatedChoices['channels'].setChoices(
-        opts,
-        'sRef',
-        'extendedName', //'name',
-        false,
-      );
-    }).catch(e => console.warn(e));
 
     return populatedChoices;
   }

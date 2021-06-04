@@ -24,7 +24,7 @@
 from __future__ import absolute_import, division
 from Components.config import config as comp_config
 from .models.info import getInfo, getCurrentTime, getStatusInfo, getFrontendStatus, testPipStatus
-from .models.services import getCurrentService, getBouquets, getServices, getSubServices, getSatellites, getBouquetEpg, getBouquetNowNextEpg, getServicesNowNextEpg, getSearchEpg, getChannelEpg, getNowNextEpg, getSearchSimilarEpg, getAllServices, getPlayableServices, getPlayableService, getParentalControlList, getEvent, loadEpg, saveEpg
+from .models.services import getCurrentService, getBouquets, getServices, getSubServices, getSatellites, getBouquetEpg, getBouquetNowNextEpg, getServicesNowNextEpg, getSearchEpg, getChannelEpg, getNowNextEpg, getSearchSimilarEpg, getAllServices, getPlayableServices, getPlayableService, getParentalControlList, getEvent, loadEpg, saveEpg, getServiceRef, getPicon
 from .models.volume import getVolumeStatus, setVolumeUp, setVolumeDown, setVolumeMute, setVolume
 from .models.audiotrack import getAudioTracks, setAudioTrack
 from .models.control import zapService, remoteControl, setPowerState, getStandbyState
@@ -43,8 +43,10 @@ from .i18n import _
 from .base import BaseController
 from .stream import StreamController
 from .utilities import getUrlArg
+from .defaults import PICON_PATH
 import re
 import six
+
 
 def whoami(request):
 	port = comp_config.OpenWebif.port.value
@@ -66,6 +68,7 @@ class WebController(BaseController):
 	Fork of *Enigma2 WebInterface API* as described in e.g.
 	https://dream.reichholf.net/e2web/.
 	"""
+
 	def __init__(self, session, path=""):
 		BaseController.__init__(self, path=path, session=session)
 		self.putChild(b"stream", StreamController(session))
@@ -107,7 +110,7 @@ class WebController(BaseController):
 		success = True
 		try:
 			InfoBar.instance.startTimeshift()
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			success = False
 		return self.P_tstate(request, success)
 
@@ -137,7 +140,7 @@ class WebController(BaseController):
 				comp_config.usage.check_timeshift.value = False
 				comp_config.usage.check_timeshift.save()
 			InfoBar.instance.stopTimeshift()
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			success = False
 		if comp_config.usage.check_timeshift.value:
 			comp_config.usage.check_timeshift.value = oldcheck
@@ -233,7 +236,7 @@ class WebController(BaseController):
 		elif set[:3] == "set":
 			try:
 				return setVolume(int(set[3:]))
-			except Exception:  # noqa: E722
+			except Exception:  # nosec # noqa: E722
 				res = getVolumeStatus()
 				res["result"] = False
 				res["message"] = _("Wrong parameter format 'set=%s'. Use set=set15 ") % set
@@ -278,7 +281,7 @@ class WebController(BaseController):
 		"""
 		try:
 			id = int(request.args[b"id"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			id = -1
 
 		return setAudioTrack(self.session, id)
@@ -331,7 +334,7 @@ class WebController(BaseController):
 		id = -1
 		try:
 			id = int(request.args[b"command"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			return {
 				"result": False,
 				"message": _("The parameter 'command' must be a number")
@@ -386,7 +389,7 @@ class WebController(BaseController):
 				return True
 			else:
 				return False
-		except:  # noqa: E722
+		except:  # nosec # noqa: E722
 			return False
 
 	def P_set_powerup_without_waking_tv(self, request):
@@ -410,7 +413,7 @@ class WebController(BaseController):
 				f.write('True')
 				f.close()
 				return True
-			except:  # noqa: E722
+			except:  # nosec # noqa: E722
 				return False
 		else:
 			return False
@@ -464,7 +467,13 @@ class WebController(BaseController):
 		type = "tv"
 		if b"type" in list(request.args.keys()):
 			type = "radio"
-		bouquets = getAllServices(type)
+		noiptv = False
+		if b"noiptv" in list(request.args.keys()):
+			noiptv = True
+		nolastscanned = False
+		if b"nolastscanned" in list(request.args.keys()):
+			nolastscanned = True
+		bouquets = getAllServices(type, noiptv, nolastscanned)
 		if b"renameserviceforxmbc" in list(request.args.keys()):
 			for bouquet in bouquets["services"]:
 				for service in bouquet["subservices"]:
@@ -528,7 +537,6 @@ class WebController(BaseController):
 		services["bname"] = bname
 		return services
 
-	
 	def P_servicesm3u(self, request):
 		"""
 		Request handler for the `servicesm3u` endpoint.
@@ -1042,12 +1050,12 @@ class WebController(BaseController):
 		if mode == 1:
 			try:
 				eventid = int(request.args[b"eventid"][0])
-			except Exception:  # noqa: E722
+			except Exception:  # nosec # noqa: E722
 				return {
 					"result": False,
 					"message": "The parameter 'eventid' must be a number"
 				}
-		elif b"eit" in list(request.args.keys()) and type(request.args[b"eit"][0]) is int:
+		elif b"eit" in list(request.args.keys()) and isinstance(request.args[b"eit"][0], int):
 			eit = int(request.args[b"eit"][0])
 		else:
 			# TODO : move this code to timers.py
@@ -1065,7 +1073,12 @@ class WebController(BaseController):
 		autoadjust = -1
 		if _autoadjust != None:
 			autoadjust = _autoadjust == "1"
-		
+
+		recordingtype = getUrlArg(request, "recordingtype")
+		if recordingtype:
+			if recordingtype not in ("normal", "descrambled", "scrambled"):
+				recordingtype = None
+
 		# TODO: merge function addTimer+editTimer+addTimerByEventId in timers.py
 		if mode == 1:
 			return addTimerByEventId(
@@ -1080,20 +1093,21 @@ class WebController(BaseController):
 				afterevent,
 				pipzap,
 				allow_duplicate,
-				autoadjust
+				autoadjust,
+				recordingtype
 			)
 		elif mode == 2:
 			try:
 				beginOld = int(request.args[b"beginOld"][0])
-			except Exception:  # noqa: E722
+			except Exception:  # nosec # noqa: E722
 				return {
 					"result": False,
 					"message": "The parameter 'beginOld' must be a number"
 				}
-	
+
 			try:
 				endOld = int(request.args[b"endOld"][0])
-			except Exception:  # noqa: E722
+			except Exception:  # nosec # noqa: E722
 				return {
 					"result": False,
 					"message": "The parameter 'endOld' must be a number"
@@ -1114,6 +1128,7 @@ class WebController(BaseController):
 				getUrlArg(request, "channelOld"),
 				beginOld,
 				endOld,
+				recordingtype,
 				self.vpsparams(request),
 				always_zap,
 				pipzap,
@@ -1134,6 +1149,7 @@ class WebController(BaseController):
 				dirname,
 				tags,
 				repeated,
+				recordingtype,
 				self.vpsparams(request),
 				None,
 				eit,
@@ -1160,7 +1176,7 @@ class WebController(BaseController):
 		res = self.testMandatoryArguments(request, ["sRef", "begin", "end", "name"])
 		if res:
 			return res
-		
+
 		return self._AddEditTimer(request, 0)
 
 	def P_timeraddbyeventid(self, request):
@@ -1247,7 +1263,7 @@ class WebController(BaseController):
 			return res
 		try:
 			begin = int(request.args[b"begin"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			return {
 				"result": False,
 				"message": "The parameter 'begin' must be a number"
@@ -1255,7 +1271,7 @@ class WebController(BaseController):
 
 		try:
 			end = int(request.args[b"end"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			return {
 				"result": False,
 				"message": "The parameter 'end' must be a number"
@@ -1283,7 +1299,7 @@ class WebController(BaseController):
 
 		try:
 			begin = int(request.args[b"begin"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			return {
 				"result": False,
 				"message": "The parameter 'begin' must be a number"
@@ -1291,13 +1307,18 @@ class WebController(BaseController):
 
 		try:
 			end = int(request.args[b"end"][0])
-		except Exception:  # noqa: E722
+		except Exception:  # nosec # noqa: E722
 			return {
 				"result": False,
 				"message": "The parameter 'end' must be a number"
 			}
 
-		return removeTimer(self.session, getUrlArg(request, "sRef"), begin, end)
+		try:
+			eit = int(request.args[b"eit"][0])
+		except Exception:  # nosec # noqa: E722
+			eit = None
+
+		return removeTimer(self.session, getUrlArg(request, "sRef"), begin, end, eit)
 
 	def P_timercleanup(self, request):
 		"""
@@ -1443,19 +1464,19 @@ class WebController(BaseController):
 			except ValueError:
 				pass
 		return getBouquetEpg(getUrlArg(request, "bRef"), begintime, endtime, self.isJson)
-	
+
 	def P_epgxmltv(self, request):
 		"""
 		Request handler for the `epgxmltv` endpoint.
-	
+
 		.. note::
-	
+
 			Not available in *Enigma2 WebInterface API*.
-	
+
 		Args:
 			request (twisted.web.server.Request): HTTP request object
 			bRef: mandatory, method uses epgmulti
-			lang: mandatory, needed for xmltv and Enigma2 has no parameter for epg language			
+			lang: mandatory, needed for xmltv and Enigma2 has no parameter for epg language
 		Returns:
 			HTTP response with headers
 		"""
@@ -1688,7 +1709,7 @@ class WebController(BaseController):
 					mnow["duration_sec"] = movie.getDuration()
 					mnow["remaining"] = movie.getDuration()
 					mnow["id"] = movie.getEventId()
-			except Exception:  # noqa: E722
+			except Exception:  # nosec # noqa: E722
 				mnow = now
 		elif mnow["sref"] == '':
 			serviceref = self.session.nav.getCurrentlyPlayingServiceReference()
@@ -2028,9 +2049,9 @@ class WebController(BaseController):
 		action = getUrlArg(request, "action", "standby")
 		enabled = getUrlArg(request, "enabled")
 		if enabled != None:
-			if enabled == "True":
+			if enabled == "True" or enabled == "true":
 				enabled = True
-			elif enabled == "False":
+			elif enabled == "False" or enabled == "false":
 				enabled = False
 
 		ret = getSleepTimer(self.session)
@@ -2064,8 +2085,11 @@ class WebController(BaseController):
 		"""
 		try:
 			from Plugins.Extensions.WebInterface.WebChilds.Toplevel import loaded_plugins
+			result = []
+			for p in loaded_plugins:
+				result.append((p[0], '', p[2], p[3]))
 			return {
-				"plugins": loaded_plugins
+				"plugins": result
 			}
 		except Exception:
 			return {
@@ -2202,11 +2226,12 @@ class WebController(BaseController):
 				return False
 
 		setcs = getConfigsSections()
-		if request.path == '/api/config':
+		if request.path == b'/api/config':
 			return setcs
 		else:
 			try:
-				sect = request.path.split('/')
+				rp = six.ensure_str(request.path)
+				sect = rp.split('/')
 				if len(sect) == 4:
 					cfgs = getConfigs(sect[3])
 					resultcfgs = []
@@ -2260,11 +2285,23 @@ class WebController(BaseController):
 			val = (getUrlArg(request, "showpicons") == 'true')
 			comp_config.OpenWebif.webcache.showpicons.value = val
 			comp_config.OpenWebif.webcache.showpicons.save()
-		elif "showchanneldetails" in list(request.args.keys()):
+		elif b"showchanneldetails" in list(request.args.keys()):
 			val = (getUrlArg(request, "showchanneldetails") == 'true')
 			comp_config.OpenWebif.webcache.showchanneldetails.value = val
 			comp_config.OpenWebif.webcache.showchanneldetails.save()
-		elif "zapstream" in list(request.args.keys()):
+		elif b"showiptvchannelsinselection" in list(request.args.keys()):
+			val = (getUrlArg(request, "showiptvchannelsinselection") == 'true')
+			comp_config.OpenWebif.webcache.showiptvchannelsinselection.value = val
+			comp_config.OpenWebif.webcache.showiptvchannelsinselection.save()
+		elif b"screenshotchannelname" in list(request.args.keys()):
+			val = (getUrlArg(request, "screenshotchannelname") == 'true')
+			comp_config.OpenWebif.webcache.screenshotchannelname.value = val
+			comp_config.OpenWebif.webcache.screenshotchannelname.save()
+		elif b"showallpackages" in list(request.args.keys()):
+			val = (getUrlArg(request, "showallpackages") == 'true')
+			comp_config.OpenWebif.webcache.showallpackages.value = val
+			comp_config.OpenWebif.webcache.showallpackages.save()
+		elif b"zapstream" in list(request.args.keys()):
 			val = (getUrlArg(request, "zapstream") == 'true')
 			comp_config.OpenWebif.webcache.zapstream.value = val
 			comp_config.OpenWebif.webcache.zapstream.save()
@@ -2283,6 +2320,52 @@ class WebController(BaseController):
 		else:
 			return {"result": False}
 		return {"result": True}
+
+	def P_getserviceref(self, request):
+		"""
+		Get the serviceref from name.
+
+
+		.. http:get:: /api/getserviceref
+
+			:query string name: service name to find
+			:query string searchinBouquetsOnly: must be 'true'
+			:query string bRef: define only one single bouquet where to find
+
+		Args:
+			request (twisted.web.server.Request): HTTP request object
+		Returns:
+			HTTP response with headers
+		"""
+		res = self.testMandatoryArguments(request, ["name"])
+		if res:
+			return res
+		name = getUrlArg(request, "name")
+		bRef = getUrlArg(request, "bRef")
+		searchinBouquetsOnly = (getUrlArg(request, "searchinBouquetsOnly") == 'true')
+		return getServiceRef(name, searchinBouquetsOnly, bRef)
+
+	def P_getpicon(self, request):
+		res = self.testMandatoryArguments(request, ["sRef"])
+		if res:
+			return res
+		path = getUrlArg(request, "path")
+		sRef = getUrlArg(request, "sRef")
+		json = getUrlArg(request, "json")
+		pp = getPicon(sRef, path, False)
+		if pp is not None:
+			if path is None:
+				path = PICON_PATH
+			link = pp
+			pp = pp.replace("/picon/", path)
+		if json == 'true':
+			if pp:
+				return {"result": True, "path": pp, "link": link}
+			else:
+				return {"result": False}
+		else:
+			self.isImage = True
+			return pp
 
 
 class ApiController(WebController):

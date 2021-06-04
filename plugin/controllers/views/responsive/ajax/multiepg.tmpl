@@ -4,9 +4,8 @@
 #from json import dumps
 #from time import localtime, strftime, mktime
 #from Plugins.Extensions.OpenWebif.controllers.views.responsive.ajax.renderevtblock import renderEvtBlock
-#from Plugins.Extensions.OpenWebif.vtiaddon import skinColor
 
-<!-- TODO: move style to css file -->
+<!-- TODO: move styles to css file -->
 <style>
 	table { font-size: 13px; }
 	tr { vertical-align: top }
@@ -14,14 +13,12 @@
 	.service { font-weight: bold; font-size: 12px; padding-right: 4px; white-space: nowrap; overflow: hidden; }
 	.service img { width:50px; height:30px; float:none; margin-right:10px; border: 0; }
 	.serviceheader { padding: 10px; width: 190px; text-align: center; background-color: #bababa; box-shadow: inset -20px 40px 60px #fff; }
-	.themed--city-lights .serviceheader { background-color: #313443; box-shadow: inset -20px 40px 60px #282c37; }
-	.title { font-weight: bold;}
-	.desc { font-size: 10px; line-height: 1.25em; max-height: 3.75em; overflow: hidden; }
+	.theme--city-lights .serviceheader { background-color: #313443; box-shadow: inset -20px 40px 60px #282c37; }
 	.event { cursor: pointer; width: 190px; overflow:hidden; }
-	.bq { font-size: 11px; font-weight: bold; padding: 2px 4px; line-height: 18px; cursor: pointer; white-space: nowrap; display: inline-block; margin: 1px 1px 0px 0px;}
+	.bq { font-size: 12px; padding: 2px 4px; line-height: 18px; cursor: pointer; white-space: nowrap; display: inline-block; margin: 1px 1px 0px 0px;}
 	.plusclick { font-size: 14px; }
-	.navtab-active { cursor: pointer; margin-right:8px; font-weight: bold; border-bottom: 2px solid $skinColor; background-color: transparent !important; bottom: 2px;}
-	.navtab-inactive { cursor: pointer; margin-right:8px;  border:None; background-color: transparent !important;  }
+	.navtab-active { cursor: pointer; margin-right:8px; font-weight: bold; border-bottom-width: 2px; border-bottom-style: solid; background-color: transparent !important; bottom: 2px;}
+	.navtab-inactive { cursor: pointer; margin-right:8px; border:None; background-color: transparent !important;  }
 	.timer { font-weight: bold; font-size: 10px; color:red; }
 	#eventdescription { width: 375px; height: auto; position: fixed; top: 205px; left: 350px; z-index: 100; display: none; overflow: auto; }
 	#navepg { margin-bottom: 1px; }
@@ -44,9 +41,9 @@
 
 	#fulltbl .table-striped>tbody>tr:hover,
 	#fulltbl .table-striped>tbody>tr:nth-of-type(odd):hover,
-	#fulltbl .themed--city-lights .table-striped>tbody>tr:hover,
-	#fulltbl .themed--city-lights .table-striped>tbody>tr:nth-of-type(odd):hover { 
-    background-color: initial;
+	#fulltbl .theme--city-lights .table-striped>tbody>tr:hover,
+	#fulltbl .theme--city-lights .table-striped>tbody>tr:nth-of-type(odd):hover { 
+	/* background-color: initial; */
 	}
 	.epg__event:hover {
 		filter: brightness(1.2);
@@ -59,16 +56,17 @@
     overflow: visible;
 	}
 	.epg__event.event--has-timer::after {
-		content: '';
+	content: '';
     display: block;
-    border-radius: 50%;
+    border-radius: 0;
     top: -25%;
-    right: -5%;
+    right: 0;
     bottom: -10%;
-    left: -10%;
+    left: -10px;
     position: absolute;
-    border: 2px solid $skinColor;
-  }
+    border-width: 0 0 0 3px;
+	border-style: solid;
+  	}
 	.epg__timer-status .material-icons {
 		font-size: 1.2em;
     margin-right: 0.6ex;
@@ -77,10 +75,26 @@
     /* line-height: 1.2; */
     float: left;
 	}
+	.epg__row {
+    border: solid;
+    border-width: 1px 0px 0px 0px;
+    height: 60px !important;
+    margin: 0;
+    box-shadow: 5px 0px 2px -3px rgba(0, 0, 0, 0.2);
+	}
+	.epg__channel {
+    width: 125px !important;
+    margin-left: 15px;
+    padding-right: 18px;
+	}
+	.epg__channel label {
+    font-size: 11px;
+    line-height: 1;
+	}
 </style>
 
 <div id="navepg">
-<ul class="nav nav-tabs theme-tab-col tab-col-$skinColor" style="margin-top: -10px;">
+<ul class="nav nav-tabs tab--skinned" style="margin-top: -10px;">
 #for $slot in list(range(0,7))
 	<li><div class="plusclick navtab-#if $slot==$day then 'active' else 'inactive' #" data-day="$(slot)">$tstrings[("day_" + (time.strftime("%w", time.localtime(time.time()+86400*slot))))]</div></li>
 #end for
@@ -110,7 +124,7 @@
 <div id="refreshmepg2" onclick="RefreshMEPG();"><i id="refreshmepgi" class="fa fa-refresh link" aria-hidden="true"></i></div>
 	<br clear="all">
 
-<ul class="nav nav-tabs theme-tab-col tab-col-$skinColor" style="margin-top: -10px;">
+<ul class="nav nav-tabs tab--skinned" style="margin-top: -10px;">
 #for $bq in $bouquets
 	<li><div class="bq navtab-#if $bq[0]==$bref then 'active' else 'inactive' #" data-ref="$quote($bq[0])">$bq[1]</div></li>
 #end for
@@ -142,6 +156,21 @@
 	}
 	.etimesmall, .etime {
 		font-size: 10px;
+	}
+	.theme--city-lights .event a {
+		color: inherit;
+	}
+	.theme--city-lights .event a:hover {
+		color: inherit;
+	}
+	.theme--city-lights .curevent {
+		color: #f1f1f1;
+		background: #313443;
+	}
+	.theme--city-lights .ename,
+	.theme--city-lights .etimesmall, 
+	.theme--city-lights .etime { 
+		color: inherit;
 	}
 </style>
 
@@ -222,8 +251,8 @@
 							<tr>
 								<td>
 #for $sname, $eventlist in six.iteritems($events)
-									<div class="row" style="border:solid;border-width:1px 0px 0px 0px;height:60px!important;background-color:#bababa;box-shadow:inset -20px 40px 60px #fff;">
-										<div style="width:141px!important;margin-left:20px;" class="pull-left">
+									<div class="row epg__row">
+										<div class="epg__channel pull-left">
 											<h2 class="picon"><img src="$(picons[$sname])" title="$sname" loading="lazy"></h2>
 											</br><label>$sname</label>
 										</div>
@@ -237,7 +266,7 @@
 				<td>
 					<table class="table-striped">
 						<tbody>
-							<tr>
+							<tr style="background-color: initial;">
 								<td>
 									<div style="overflow:auto" id="tblinner">
 										<div class="timetable">
@@ -286,7 +315,7 @@
 				</td>
 			<tr>
 		</tbody>
-	<table>
+	<table><!-- fixing this will cause timeline to shift event title/time out of vertical alignment, just like the IE5 days! -->
 </div>
 </div>
 
@@ -295,172 +324,20 @@
 <div id="eventdescription"></div>
 
 <script>
-#if $mode == 2
-var opena = $first;
-var openb = $now;
-var pos = (openb - opena);
-if (pos > 0)
-	pos = pos / 6;
-
-#if $day == 0
-
-jQuery(".timetable-now").css('left',151 + pos);
-
-setTimeout(function() {
-	var nowdate = Math.round(+new Date()/1000);
-	var pos = (nowdate - opena);
-	if(pos > 0)
-		pos = pos / 6;
-	jQuery(".timetable-now").css('left',151 + pos);
-} ,10000);
-
-jQuery(".timetable-now").css('height', jQuery("#tblinner").height());
+// \$mode == $mode
+#if '$mode' == 2
+var multiepg_first = '$first';
+var multiepg_now = '$now';
 #else
-jQuery(".timetable-now").css('height', '0');
+var multiepg_first = '';
+var multiepg_now = '';
 #end if
 
-#end if
+var multiepg_mode = '$mode';
+var multiepg_day = '$day';
+var multiepg_week = '$week';
+var multiepg_epgmode = '$epgmode';
+var multiepg_bref = '${quote($bref)}';
 var picons = $dumps($picons);
-var reloadTimers = false;
-function getScrollBarWidth () {
-	var outer = jQuery('<div>').css({visibility: 'hidden', width: 100, overflow: 'scroll'}).appendTo('body'),
-		widthWithScroll = jQuery('<div>').css({width: '100%'}).appendTo(outer).outerWidth();
-	outer.remove();
-	return 100 - widthWithScroll;
-}
-var scrollBarWidth=getScrollBarWidth();
-function fixTableHeight() {
-	var addScrollBarWidth = scrollBarWidth;
-	if (jQuery('#tbl1').width() <= jQuery("#tvcontent").width()){
-		addScrollBarWidth = 0;
-	}
-
-#if $mode == 1
-	var new_height = (jQuery("#epgcard").height() *0.85 - jQuery("#epgcardheaderI").height() - jQuery("#epgcardheaderII").height() - jQuery("#navepg").height() - 2*jQuery("#tbl1 thead").height() - addScrollBarWidth - 2);
-	jQuery("#tbl1body").height(new_height + "px");
-	var scrollwidth = (jQuery("#epgcard").width() -40 ) + "px";
-	var scrollheightI = new_height + 'px';
-	jQuery('#tbl1body').height(scrollheightI);
-	jQuery('#fulltbl').width(scrollwidth);
-#else
-	var new_height = (jQuery("#epgcard").height() *0.90 - jQuery("#epgcardheaderI").height() - jQuery("#epgcardheaderII").height() - jQuery("#navepg").height() - 2*jQuery("#tbl1 thead").height() - addScrollBarWidth - 2);
-	var scrollheightI = new_height + 'px';
-	var scrollwidth = (jQuery("#epgcard").width() -40 ) + "px";
-	jQuery('#fulltbl').height(scrollheightI);
-	jQuery('#tblinner').width(scrollwidth);
-#end if
-}
-fixTableHeight();
-
-jQuery(window).resize(function(){ fixTableHeight(); });
-
-jQuery(".bq").click(function() {
-	var id = jQuery(this).data("ref");
-	var epgmode = "$epgmode";
-	jQuery("#tvcontent").html(loadspinner).load('ajax/multiepg?bref='+id +'&day=$day&epgmode=' + epgmode);
-	SetLSValue("lastmbq_"+epgmode,id);
-});
-
-#if $mode == 1
-jQuery(".service").click(function() {
-	var ref = jQuery(this).data("ref");
-	if (ref != undefined) {
-		zapChannel(ref, '');
-	}
-});
-#end if
-jQuery(".plusclick").click(function() {
-	var day = jQuery(this).data("day");
-	var epgmode = "$epgmode";
-	if (day != undefined) {
-		if (day > 999)
-		{
-			var w = day - 1000;
-			jQuery("#tvcontent").html(loadspinner).load('ajax/multiepg?bref=${quote($bref)}&day='+$day+'&epgmode='+epgmode+'&week='+w);
-		}
-		else if (day > 199)
-		{
-			var d = day - 200;
-			var dt = (d==0) ? '' : jQuery(this).html();
-			var pos = 0;
-			jQuery('#tblinner').scrollLeft(0);
-			jQuery("#timescroller li ol .event").each( function (){
-				if (pos == 0) {
-					if (jQuery(this).data("dt") == dt) {
-						if(jQuery(this).position() != undefined)
-							pos = jQuery(this).position().left;
-					}
-				}
-			});
-			
-			if(d=='')
-			{
-				var l = jQuery(".timetable-now").css('left');
-				pos = parseInt(l.replace('px',''));
-			}
-
-			if(pos>0)
-			{
-				pos-=200;
-				
-				jQuery('#tbl1body').animate({scrollLeft: pos}, 500);
-				
-				 
-			}
-		}
-		else if (day > 100)
-		{
-			var mode = day - 100;
-			if (mode != $mode) {
-				jQuery.ajax({
-				url: 'api/setwebconfig?mepgmode=' + mode,
-					success: function(data) {
-						jQuery("#tvcontent").html(loadspinner).load('ajax/multiepg?bref=${quote($bref)}&day=$day&epgmode='+epgmode+'&week='+$week);
-					}
-				});
-			}
-		}
-		else {
-			jQuery("#tvcontent").html(loadspinner).load('ajax/multiepg?bref=${quote($bref)}&day='+day+'&epgmode='+epgmode+'&week='+$week);
-		}
-	} else {
-		epgmode = jQuery(this).data("tvradio");
-		if (epgmode != undefined) {
-			jQuery("#tvcontent").html(loadspinner).load('ajax/multiepg?day='+day+'&epgmode='+epgmode);
-		}
-	}
-});
-
-	if (jQuery("#header").is(':hidden')) { 
-		jQuery('#compressmepg').show();
-		jQuery('#refreshmepg2').show();
-	}
-	if (mepgdirect == 1) {
-		mepgdirect=0;
-		jQuery("#expandmepg").click();
-	}
-	jQuery(".togglescroll").click(function() {
-		if(jQuery('#tblinner').css('overflow-y') == 'hidden') {
-			jQuery('#tblinner').css('overflow-y', '');
-			jQuery('.togglescroll').removeClass('ui-widget-header');
-			SetLSValue('MultiEPGScrollStyle', '1');
-		} else {
-			jQuery('#tblinner').css('overflow-y', 'hidden');
-			jQuery('.togglescroll').addClass('ui-widget-header');
-			SetLSValue('MultiEPGScrollStyle', '0');
-		}
-	});
-
-#if $mode == 2
-	jQuery(function() {
-		if (GetLSValue('MultiEPGScrollStyle', '0')=='0') {
-			jQuery('#tblinner').css('overflow-y', 'hidden');
-			jQuery('.togglescroll').addClass('ui-widget-header');
-		} else {
-			jQuery('#tblinner').css('overflow-y', '');
-			jQuery('.togglescroll').removeClass('ui-widget-header');
-		}
-	});
-#end if
-
 </script>
+<script src="/modern/js/vti-responsive-multiepg.min.js"></script>

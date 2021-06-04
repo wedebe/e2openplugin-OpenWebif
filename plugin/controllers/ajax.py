@@ -24,9 +24,7 @@ from Tools.Directories import fileExists
 from Components.config import config
 from time import mktime, localtime
 import os
-import six
 
-from Plugins.Extensions.OpenWebif.controllers.models.info import getInfo
 from Plugins.Extensions.OpenWebif.controllers.models.services import getBouquets, getChannels, getSatellites, getProviders, getEventDesc, getChannelEpg, getSearchEpg, getCurrentFullInfo, getMultiEpg, getEvent
 from Plugins.Extensions.OpenWebif.controllers.models.info import getInfo
 from Plugins.Extensions.OpenWebif.controllers.models.movies import getMovieList, getMovieSearchList
@@ -40,7 +38,7 @@ from Plugins.Extensions.OpenWebif.controllers.utilities import getUrlArg, getEve
 
 try:
 	from boxbranding import getBoxType, getMachineName, getMachineBrand, getMachineBuild
-except:  # noqa: E722
+except:  # nosec # noqa: E722
 	from Plugins.Extensions.OpenWebif.controllers.models.owibranding import getBoxType, getMachineName, getMachineBrand, getMachineBuild  # noqa: F401
 
 
@@ -48,6 +46,7 @@ class AjaxController(BaseController):
 	"""
 	Ajax Web Controller
 	"""
+
 	def __init__(self, session, path=""):
 		BaseController.__init__(self, path=path, session=session)
 
@@ -55,7 +54,7 @@ class AjaxController(BaseController):
 		"""
 		ajax requests with no extra data
 		"""
-		return ['powerstate', 'message', 'myepg', 'radio', 'terminal', 'epgr', 'bqe', 'tv', 'satfinder']
+		return ['powerstate', 'message', 'myepg', 'radio', 'terminal', 'bqe', 'tv', 'satfinder']
 
 	def P_edittimer(self, request):
 		pipzap = getInfo()['timerpipzap']
@@ -88,6 +87,7 @@ class AjaxController(BaseController):
 		channels['type'] = stype
 		channels['showpicons'] = config.OpenWebif.webcache.showpicons.value
 		channels['showpiconbackground'] = config.OpenWebif.responsive_show_picon_background.value
+		channels['shownownextcolumns'] = config.OpenWebif.responsive_nownext_columns_enabled.value
 		return channels
 
 	def P_eventdescription(self, request):
@@ -274,6 +274,9 @@ class AjaxController(BaseController):
 		ret['zapstream'] = config.OpenWebif.webcache.zapstream.value
 		ret['showpicons'] = config.OpenWebif.webcache.showpicons.value
 		ret['showchanneldetails'] = config.OpenWebif.webcache.showchanneldetails.value
+		ret['showiptvchannelsinselection'] = config.OpenWebif.webcache.showiptvchannelsinselection.value
+		ret['screenshotchannelname'] = config.OpenWebif.webcache.screenshotchannelname.value
+		ret['showallpackages'] = config.OpenWebif.webcache.showallpackages.value
 		ret['allowipkupload'] = config.OpenWebif.allow_upload_ipk.value
 		loc = getLocations()
 		ret['locations'] = loc['locations']
@@ -326,6 +329,11 @@ class AjaxController(BaseController):
 		epg['epgmode'] = epgmode
 		return epg
 
+	def P_epgr(self, request):
+		ret = {}
+		ret['showiptvchannelsinselection'] = config.OpenWebif.webcache.showiptvchannelsinselection.value
+		return ret
+
 	def P_at(self, request):
 		ret = {}
 		ret['hasVPS'] = 0
@@ -333,7 +341,7 @@ class AjaxController(BaseController):
 		ret['test'] = 0
 		ret['autoadjust'] = getInfo()['timerautoadjust']
 		ret['searchTypes'] = {}
-		
+
 		try:
 			from Plugins.Extensions.AutoTimer.AutoTimer import typeMap
 			ret['searchTypes'] = typeMap
@@ -360,9 +368,12 @@ class AjaxController(BaseController):
 			ret['test'] = 1
 		except ImportError:
 			pass
+		ret['showiptvchannelsinselection'] = config.OpenWebif.webcache.showiptvchannelsinselection.value
+
 		return ret
 
 	def P_webtv(self, request):
+		streaming_port = int(config.OpenWebif.streamport.value)
 		if config.OpenWebif.auth_for_streaming.value:
 			session = GetSession()
 			if session.GetAuth(request) is not None:
@@ -383,4 +394,4 @@ class AjaxController(BaseController):
 					transcoder_port = int(config.OpenWebif.streamport.value)
 			except Exception:
 				transcoder_port = 0
-		return {"transcoder_port": transcoder_port, "vxgenabled": vxgenabled, "auth": auth}
+		return {"transcoder_port": transcoder_port, "vxgenabled": vxgenabled, "auth": auth, "streaming_port": streaming_port}
