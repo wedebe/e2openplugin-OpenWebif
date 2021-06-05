@@ -1074,6 +1074,11 @@ class WebController(BaseController):
 		if _autoadjust != None:
 			autoadjust = _autoadjust == "1"
 
+		recordingtype = getUrlArg(request, "recordingtype")
+		if recordingtype:
+			if recordingtype not in ("normal", "descrambled", "scrambled"):
+				recordingtype = None
+
 		# TODO: merge function addTimer+editTimer+addTimerByEventId in timers.py
 		if mode == 1:
 			return addTimerByEventId(
@@ -1088,7 +1093,8 @@ class WebController(BaseController):
 				afterevent,
 				pipzap,
 				allow_duplicate,
-				autoadjust
+				autoadjust,
+				recordingtype
 			)
 		elif mode == 2:
 			try:
@@ -1122,6 +1128,7 @@ class WebController(BaseController):
 				getUrlArg(request, "channelOld"),
 				beginOld,
 				endOld,
+				recordingtype,
 				self.vpsparams(request),
 				always_zap,
 				pipzap,
@@ -1142,6 +1149,7 @@ class WebController(BaseController):
 				dirname,
 				tags,
 				repeated,
+				recordingtype,
 				self.vpsparams(request),
 				None,
 				eit,
@@ -2218,11 +2226,12 @@ class WebController(BaseController):
 				return False
 
 		setcs = getConfigsSections()
-		if request.path == '/api/config':
+		if request.path == b'/api/config':
 			return setcs
 		else:
 			try:
-				sect = request.path.split('/')
+				rp = six.ensure_str(request.path)
+				sect = rp.split('/')
 				if len(sect) == 4:
 					cfgs = getConfigs(sect[3])
 					resultcfgs = []
@@ -2276,19 +2285,23 @@ class WebController(BaseController):
 			val = (getUrlArg(request, "showpicons") == 'true')
 			comp_config.OpenWebif.webcache.showpicons.value = val
 			comp_config.OpenWebif.webcache.showpicons.save()
-		elif "showchanneldetails" in list(request.args.keys()):
+		elif b"showchanneldetails" in list(request.args.keys()):
 			val = (getUrlArg(request, "showchanneldetails") == 'true')
 			comp_config.OpenWebif.webcache.showchanneldetails.value = val
 			comp_config.OpenWebif.webcache.showchanneldetails.save()
-		elif "showiptvchannelsinselection" in list(request.args.keys()):
+		elif b"showiptvchannelsinselection" in list(request.args.keys()):
 			val = (getUrlArg(request, "showiptvchannelsinselection") == 'true')
 			comp_config.OpenWebif.webcache.showiptvchannelsinselection.value = val
 			comp_config.OpenWebif.webcache.showiptvchannelsinselection.save()
-		elif "screenshotchannelname" in list(request.args.keys()):
+		elif b"screenshotchannelname" in list(request.args.keys()):
 			val = (getUrlArg(request, "screenshotchannelname") == 'true')
 			comp_config.OpenWebif.webcache.screenshotchannelname.value = val
 			comp_config.OpenWebif.webcache.screenshotchannelname.save()
-		elif "zapstream" in list(request.args.keys()):
+		elif b"showallpackages" in list(request.args.keys()):
+			val = (getUrlArg(request, "showallpackages") == 'true')
+			comp_config.OpenWebif.webcache.showallpackages.value = val
+			comp_config.OpenWebif.webcache.showallpackages.save()
+		elif b"zapstream" in list(request.args.keys()):
 			val = (getUrlArg(request, "zapstream") == 'true')
 			comp_config.OpenWebif.webcache.zapstream.value = val
 			comp_config.OpenWebif.webcache.zapstream.save()
